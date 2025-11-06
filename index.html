@@ -443,7 +443,7 @@ button,input,select,textarea{font-family:inherit}
               <div class="kv"><div class="key">รูปแบบหลัก <span class="expert-winrate" id="perfMain">--%</span></div><div class="val" id="expMain">-</div></div>
               <div class="kv"><div class="key">ตารางย่อย <span class="expert-winrate" id="perfDerived">--%</span></div><div class="val" id="expDerived">-</div></div>
               <div class="kv"><div class="key">กฎไพ่ <span class="expert-winrate" id="perfRules">--%</span></div><div class="val" id="expRules">-</div></div>
-              <div class="kv"><div class="key">สถิติขอน <span class="expert-winrate" id="perfStats">--%</span></div><div class="val" id="expStats">-</div></div>
+              <div class="kv"><div class="key">โมเมนตัม (10) <span class="expert-winrate" id="perfStats">--%</span></div><div class="val" id="expStats">-</div></div>
               <div class="kv"><div class="key">กฎพิเศษ <span class="expert-winrate" id="perfSpecial">--%</span></div><div class="val" id="expSpecial">-</div></div>
               <div class="kv"><div class="key">Sim: สถิติ <span class="expert-winrate" id="perfSimA">--%</span></div><div class="val" id="expSimA">-</div></div>
               <div class="kv"><div class="key">Sim: รูปแบบ <span class="expert-winrate" id="perfSimB">--%</span></div><div class="val" id="expSimB">-</div></div>
@@ -514,12 +514,20 @@ button,input,select,textarea{font-family:inherit}
     </div>
     
     <h3>การควบคุม AI</h3>
+    <div class="kv-list" style="margin-bottom: 16px;">
+        <div class="kv">
+            <div class="key">เปิดใช้งาน Meta-mind<br><span style="font-size:11px; color:var(--text-dark)">(ระบบ AI ถ่วงน้ำหนัก)</span></div>
+            <input type="checkbox" id="toggleMetaMind" onchange="onToggleMetaMind(this.checked)">
+        </div>
+    </div>
     <div class="kv" style="margin-bottom:10px">
       <div class="key" style="font-size:14px">ความมั่นใจ (Trigger)</div>
       <div class="val" id="settingsRiskLabel">Balanced (5/9)</div>
     </div>
     <input type="range" min="1" max="9" value="5" class="slider" id="settingsRiskSlider" style="width:100%">
-    <div style="font-size:12px;color:var(--text-muted;margin-top:4px">ปรับ "เสียงโหวต" ขั้นต่ำที่ AI (Hunter) ต้องมี ก่อนส่ง Signal (สูง = รอนานขึ้น แต่ชัวร์ขึ้น)</div>
+    <div style="font-size:12px;color:var(--text-muted;margin-top:4px" id="settingsRiskDesc">
+        ปรับ "เสียงโหวต" ขั้นต่ำที่ AI (Hunter) ต้องมี ก่อนส่ง Signal
+    </div>
     <div class="slider-controls">
         <button class="btn-small" onclick="onSetTriggerDefault()">ค่าเริ่มต้น</button>
         <button class="btn-small" onclick="onCancelTrigger()">ยกเลิก</button>
@@ -571,8 +579,11 @@ button,input,select,textarea{font-family:inherit}
          - <strong>แตะ (Tap):</strong> ป้อนข้อมูลแบบเร็ว (`PLAYER` หรือ `BANKER`) AI จะถือว่าเป็น `_UNKNOWN` (ไม่รู้จำนวนไพ่)<br>
          - <strong>แตะค้าง (Hold):</strong> เปิดเมนูย่อย เพื่อป้อนข้อมูลแบบละเอียด (`2 ใบ` หรือ `3 ใบ`)
       </p>
-      <p><strong>Signal คืออะไร? (ระบบ Hunter)</strong><br>
-         AI จะแสดง `"-"` (รอ) เป็นส่วนใหญ่ และจะส่ง Signal (P/B) เฉพาะในตาที่ "มั่นใจ" สูงเท่านั้น (เข้าเงื่อนไข Trigger)</p>
+      <p><strong>🧠 Meta-mind (AI ถ่วงน้ำหนัก)</strong><br>
+         คุณสามารถเปิดโหมดนี้ได้ใน <strong>⚙️ (ตั้งค่า)</strong><br>
+         - <strong>โหมดปิด (Default):</strong> AI นับ 1 สิทธิ์ 1 เสียง (เช่น 5/9 เสียง)<br>
+         - <strong>โหมดเปิด (God-Tier):</strong> AI จะ "ถ่วงน้ำหนัก" โหวตตาม "Winrate" จริงของผู้เชี่ยวชาญแต่ละตัว
+      </p>
       <p><strong>Big Road (ทึบ vs โปร่ง)</strong><br>
          - <strong>วงกลมทึบ (P/B):</strong> ชนะด้วยไพ่ 2 ใบ (P2 / B2)<br>
          - <strong>วงกลมโปร่ง (P/B):</strong> ชนะด้วยไพ่ 3 ใบ (P3 / B3)<br>
@@ -580,9 +591,6 @@ button,input,select,textarea{font-family:inherit}
       </p>
       <p><strong>TIE (เส้นเฉียง)</strong><br>
          ผลเสมอ `T` จะถูกแสดงเป็น "เส้นสีเขียวเฉียง" ทับผลลัพธ์ P/B ก่อนหน้า (เหมือนในคาสิโนจริง)
-      </p>
-      <p><strong>Backup (สำคัญมาก!)</strong><br>
-         "สมอง" AI (IndexedDB) เก็บในเครื่องคุณ ถ้าล้าง Chrome มันจะหาย! กด <strong>⚙️ (ตั้งค่า) > Export CSV</strong> บ่อยๆ เพื่อสำรอง "ประวัติ" (หนังสือเรียน) ไว้ ถ้าหาย ให้กด Import CSV และ "ฝึกสมองใหม่"
       </p>
     </div>
   </div>
@@ -708,7 +716,7 @@ const ui = {
     
     // (Modals)
     dashboardModal: document.getElementById('dashboardModal'),
-    historyHubModal: document.getElementById('historyHubModal'), // (‼️‼️ เพิ่ม ‼️‼️)
+    historyHubModal: document.getElementById('historyHubModal'), 
     settingsModal: document.getElementById('settingsModal'),
     helpModal: document.getElementById('helpModal'),
     historyModal: document.getElementById('historyModal'),
@@ -728,14 +736,18 @@ const ui = {
     retrainStatus: document.getElementById('retrainStatus'),
     
     csvPasteArea: document.getElementById('csvPasteArea'),
+    
+    // (Setting Controls)
     settingsRiskSlider: document.getElementById('settingsRiskSlider'),
     settingsRiskLabel: document.getElementById('settingsRiskLabel'),
-    
-    advancedPanels: document.getElementById('advancedPanels'),
+    settingsRiskDesc: document.getElementById('settingsRiskDesc'),
     
     // (Power Management)
     togglePowerMode: document.getElementById('togglePowerMode'),
     toggleHaptics: document.getElementById('toggleHaptics'),
+    
+    // (‼️‼️ เพิ่ม: META-MIND TOGGLE ‼️‼️)
+    toggleMetaMind: document.getElementById('toggleMetaMind'),
 };
 
 // 2. State (สถานะของหน้าจอ)
@@ -750,7 +762,8 @@ const HOLD_DURATION = 400; // (0.4 วินาที)
 let currentTriggerValue = 5;
 let appSettings = {
     powerMode: false,
-    haptics: true
+    haptics: true,
+    useMetaMind: false // (‼️‼️ เพิ่ม ‼️‼️)
 };
 // (State การยืนยัน)
 let confirmCallback = null;
@@ -761,7 +774,8 @@ function initializeWorker() {
         document.getElementById('loaderStatus').textContent = "สถานะ: กำลังสตาร์ท 'สมอง AI'...";
         try {
             // (‼️‼️ แก้ไข: Cache Busting ‼️‼️)
-            aiWorker = new Worker('worker.js?v=1.0.1'); 
+            // (เปลี่ยน v=1.0.1 เป็น v=1.0.2 เพื่อบังคับโหลดใหม่)
+            aiWorker = new Worker('worker.js?v=1.0.2'); 
             
             aiWorker.onmessage = handleWorkerMessage;
             aiWorker.onerror = handleWorkerError;
@@ -771,7 +785,8 @@ function initializeWorker() {
             
             const config = {
                 riskThreshold: currentTriggerValue,
-                powerMode: appSettings.powerMode
+                powerMode: appSettings.powerMode,
+                useMetaMind: appSettings.useMetaMind // (‼️‼️ เพิ่ม ‼️‼️)
             };
             aiWorker.postMessage({ command: 'INIT', config: config });
             
@@ -794,7 +809,6 @@ function handleWorkerMessage(e) {
     
     switch (data.command) {
         case 'INIT_COMPLETE':
-            // (แก้แผล "โหลดช้า")
             ui.loadingOverlay.style.display = 'none'; 
             ui.app.style.display = 'block'; 
             
@@ -802,6 +816,10 @@ function handleWorkerMessage(e) {
             ui.statusHeartbeat.textContent = "เชื่อมต่อแล้ว";
             ui.statusHeartbeat.className = "val ok";
             aiWorker.postMessage({ command: 'LOAD_LAST_STATE' });
+            
+            // (‼️‼️ เพิ่ม: อัปเดต UI ของ Slider ‼️‼️)
+            updateRiskSliderUI();
+            
             break;
             
         case 'LAST_STATE_LOADED':
@@ -809,7 +827,6 @@ function handleWorkerMessage(e) {
             break;
             
         case 'ANALYSIS_COMPLETE':
-            // (‼️‼️ เพิ่ม: Haptic "Hunter" ‼️‼️)
             if (data.state.signal.finalPrediction !== '-') {
                 haptic('heavy');
             }
@@ -856,7 +873,6 @@ function handleWorkerMessage(e) {
             
         case 'ACTION_FAILED':
             alert(`เกิดข้อผิดพลาด: ${data.message}`);
-            // (สำคัญ) ปลดล็อคปุ่ม ถ้ามันล้มเหลว
             setControlsDisabled(false);
             break;
             
@@ -923,7 +939,7 @@ function stopHeartbeat() {
 // A. อัปเดตหน้าจอทั้งหมด
 function updateUI(state) {
     if (!state) {
-        setControlsDisabled(false); // ปลดล็อคเผื่อ
+        setControlsDisabled(false); 
         return;
     }
     
@@ -931,10 +947,9 @@ function updateUI(state) {
     const pred = state.signal.finalPrediction || '-';
     ui.predCircle.textContent = pred;
     
-    // (แก้แผล "AI ตาย") - "ชีพจร"
     if (pred === '-' && !appSettings.powerMode) {
         ui.predCircle.className = 'pred-circle waiting';
-        ui.condBox.textContent = `กำลังวิเคราะห์... (รอเงื่อนไข ${state.signal.condition})`;
+        ui.condBox.textContent = `กำลังวิเคราะห์... (${state.signal.condition})`;
     } else {
         ui.predCircle.className = `pred-circle ${pred}`;
         ui.condBox.textContent = `เงื่อนไข: ${state.signal.condition || 'กำลังรอผล...'}`;
@@ -942,7 +957,6 @@ function updateUI(state) {
     
     ui.confText.textContent = `ความมั่นใจ: ${state.signal.confidence || 0}%`;
     
-    // (‼️‼️ เพิ่ม ‼️‼️)
     // 1B. อัปเดต คำแนะนำการเดินเงิน
     updateBettingStrategy(state.signal);
     
@@ -965,7 +979,7 @@ function updateUI(state) {
     // 5. อัปเดต Big Road
     renderBigRoad(state.history.shoe);
     
-    // 6. (สำคัญ) ปลดล็อคปุ่มกด (แก้แผล "คลิกรัว")
+    // 6. ปลดล็อคปุ่มกด
     setControlsDisabled(false);
 }
 
@@ -979,11 +993,12 @@ function updateBettingStrategy(signal) {
         ui.betReason.textContent = "รอ Signal ที่มีความมั่นใจสูง";
         ui.betSuggestion.style.color = "var(--text-muted)";
     } else {
-        if (conf >= 80) { // (8/9 or 9/9 votes)
+        // (ปรับตรรกะตาม % ความมั่นใจ)
+        if (conf >= 80) { 
             ui.betSuggestion.textContent = "2 หน่วย (Units)";
             ui.betReason.textContent = `มั่นใจสูง (${conf}%) ใน ${pred}`;
             ui.betSuggestion.style.color = "var(--green)";
-        } else { // (5/9, 6/9, 7/9 votes)
+        } else { 
             ui.betSuggestion.textContent = "1 หน่วย (Unit)";
             ui.betReason.textContent = `มั่นใจปานกลาง (${conf}%) ใน ${pred}`;
             ui.betSuggestion.style.color = "var(--gold)";
@@ -1002,10 +1017,9 @@ function updateExpertDashboard(votes, performance) {
             el.className = `val ${vote}`;
         }
     };
-    // (ฟังก์ชันอัปเดต Winrate ของ Expert)
     const setPerf = (key) => {
         const perf = performance[key];
-        const el = document.getElementById(`perf${key.charAt(0).toUpperCase() + key.slice(1)}`); // (หา perfMain, perfDerived)
+        const el = document.getElementById(`perf${key.charAt(0).toUpperCase() + key.slice(1)}`); 
         if (!el) return;
         
         if (perf && perf.total > 0) {
@@ -1019,7 +1033,7 @@ function updateExpertDashboard(votes, performance) {
     setVote(ui.expMain, votes.main); setPerf('main');
     setVote(ui.expDerived, votes.derived); setPerf('derived');
     setVote(ui.expRules, votes.rules); setPerf('rules');
-    setVote(ui.expStats, votes.stats); setPerf('stats');
+    setVote(ui.expStats, votes.stats); setPerf('stats'); // (ชื่อ Stats ยังเหมือนเดิม)
     setVote(ui.expSpecial, votes.special); setPerf('special');
     setVote(ui.expSimA, votes.simA); setPerf('simA');
     setVote(ui.expSimB, votes.simB); setPerf('simB');
@@ -1035,19 +1049,19 @@ function renderBigRoad(history) {
     if (!history || history.length === 0) return;
     
     const cols = [];
-    let tieCount = 0; // (ตัวนับ TIE)
+    let tieCount = 0; 
     
     history.forEach(hand => {
         const result = hand.result;
         const mainResult = result[0];
         
         if (mainResult === 'T') {
-            tieCount++; // (จำ TIE ไว้)
-            return; // (ไม่สร้างเซลล์ใหม่)
+            tieCount++; 
+            return; 
         }
         
         let handData = { hand: hand, ties: tieCount };
-        tieCount = 0; // (รีเซ็ตตัวนับ TIE)
+        tieCount = 0; 
         
         if (cols.length === 0) {
             cols.push([handData]);
@@ -1071,17 +1085,14 @@ function renderBigRoad(history) {
         col.forEach(handData => {
             const cell = document.createElement('div');
             const hand = handData.hand;
-            // (แก้แผล "TIE Line")
             const cellClass = 'br-' + (hand.result === 'T' ? 'T' : hand.result.replace('2', ''));
             cell.className = `br-cell ${cellClass}`;
             cell.textContent = hand.result[0];
             
-            // (ถ้ามี TIE ให้วาดเส้น)
             if (handData.ties > 0) {
                 const tieLine = document.createElement('div');
                 tieLine.className = 'tie-line';
                 cell.appendChild(tieLine);
-                // (ถ้ามี TIE มากกว่า 1 ให้ใส่ตัวเลข)
                 if (handData.ties > 1) {
                     tieLine.textContent = handData.ties;
                     tieLine.style.color = 'white';
@@ -1115,56 +1126,53 @@ function renderHistoryEditor(history, filter) {
     
     recentHistory.forEach(hand => {
         const row = document.createElement('tr');
-        const cellId = document.createElement('td');
-        cellId.textContent = `ตาที่ ${hand.id}`;
-        row.appendChild(cellId);
-        
-        const cellResult = document.createElement('td');
-        cellResult.textContent = hand.result;
-        row.appendChild(cellResult);
-        
-        const cellAction = document.createElement('td');
-        const select = document.createElement('select');
-        select.innerHTML = `<option value="">-- เลือกใหม่ --</option>
-                          <option value="P_UNKNOWN">PLAYER (ไม่ระบุ)</option>
-                          <option value="P2">PLAYER 2 ใบ</option>
-                          <option value="P3">PLAYER 3 ใบ</option>
-                          <option value="B_UNKNOWN">BANKER (ไม่ระบุ)</option>
-                          <option value="B2">BANKER 2 ใบ</option>
-                          <option value="B3">BANKER 3 ใบ</option>
-                          <option value="T">TIE</option>`;
-        select.onchange = () => {
-            const newValue = select.value;
-            if (newValue) {
-                showConfirm(
-                    `ยืนยันการแก้ไข`,
-                    `คุณต้องการแก้ไข ตาที่ ${hand.id} จาก ${hand.result} เป็น ${newValue} หรือไม่?`,
-                    () => {
-                        setControlsDisabled(true);
-                        ui.predCircle.textContent = '...';
-                        ui.condBox.textContent = "กำลังแก้ไข...";
-                        
-                        aiWorker.postMessage({ command: 'EDIT_HISTORY', handId: hand.id, newResult: newValue });
-                        closeModal('historyModal');
-                    }
-                );
-            }
-        };
-        cellAction.appendChild(select);
-        row.appendChild(cellAction);
-        
+        row.innerHTML = `
+            <td>ตาที่ ${hand.id}</td>
+            <td>${hand.result}</td>
+            <td>
+                <select onchange="onConfirmEdit(this, ${hand.id}, '${hand.result}')">
+                    <option value="">-- เลือกใหม่ --</option>
+                    <option value="P_UNKNOWN">PLAYER (ไม่ระบุ)</option>
+                    <option value="P2">PLAYER 2 ใบ</option>
+                    <option value="P3">PLAYER 3 ใบ</option>
+                    <option value="B_UNKNOWN">BANKER (ไม่ระบุ)</option>
+                    <option value="B2">BANKER 2 ใบ</option>
+                    <option value="B3">BANKER 3 ใบ</option>
+                    <option value="T">TIE</option>
+                </select>
+            </td>
+        `;
         ui.historyEditorBody.appendChild(row);
     });
 }
+// (‼️‼️ แยกฟังก์ชัน ‼️‼️)
+window.onConfirmEdit = function(selectElement, handId, oldResult) {
+    const newValue = selectElement.value;
+    if (newValue) {
+        showConfirm(
+            `ยืนยันการแก้ไข`,
+            `คุณต้องการแก้ไข ตาที่ ${handId} จาก ${oldResult} เป็น ${newValue} หรือไม่?`,
+            () => {
+                setControlsDisabled(true);
+                ui.predCircle.textContent = '...';
+                ui.condBox.textContent = "กำลังแก้ไข...";
+                
+                aiWorker.postMessage({ command: 'EDIT_HISTORY', handId: handId, newResult: newValue });
+                closeModal('historyModal');
+            }
+        );
+        selectElement.value = ""; // (รีเซ็ต dropdown)
+    }
+}
 
-// (‼️‼️ เพิ่ม: "สรุปประวัติขอนไพ่" ‼️‼️)
+
+// F. อัปเดตสรุปประวัติขอนไพ่
 function renderShoeSummary(summary) {
     if (!summary || summary.length === 0) {
         ui.shoeHistorySummary.innerHTML = 'ยังไม่มีประวัติขอนไพ่';
         return;
     }
     ui.shoeHistorySummary.innerHTML = '';
-    // (‼️‼️ แก้ไข: ไม่ต้อง reverse ‼️‼️)
     summary.forEach(shoe => {
         const div = document.createElement('div');
         div.style.borderBottom = `1px solid var(--card-border)`;
@@ -1392,28 +1400,54 @@ ui.historyFilter.onchange = () => {
 };
 
 
-// E. ตั้งค่า AI Risk (‼️‼️ "ผ่าตัด" ‼️‼️)
+// E. (‼️‼️ อัปเกรด: SETTINGS CONTROLS ‼️‼️)
 ui.settingsRiskSlider.oninput = function() {
-    ui.settingsRiskLabel.textContent = `(${this.value}/9 เสียง)`;
+    updateRiskSliderUI(this.value);
 };
 window.onSaveTrigger = function() {
     const newValue = parseInt(ui.settingsRiskSlider.value, 10);
-    currentTriggerValue = newValue; // (บันทึกค่าใหม่)
-    saveSettings(); // (บันทึกลง localStorage)
+    currentTriggerValue = newValue; 
+    saveSettings(); 
     aiWorker.postMessage({ command: 'UPDATE_CONFIG', config: { riskThreshold: newValue } });
-    alert(`บันทึกค่าความมั่นใจเป็น ${newValue}/9 เรียบร้อยแล้ว`);
+    alert(`บันทึกค่าความมั่นใจเป็น ${newValue} เรียบร้อยแล้ว`);
     closeModal('settingsModal');
 }
 window.onCancelTrigger = function() {
-    ui.settingsRiskSlider.value = currentTriggerValue; // (เด้งกลับค่าเดิม)
-    ui.settingsRiskLabel.textContent = `(${currentTriggerValue}/9 เสียง)`;
+    updateRiskSliderUI(currentTriggerValue); // (เด้งกลับค่าเดิม)
     closeModal('settingsModal');
 }
 window.onSetTriggerDefault = function() {
     const defaultValue = 5;
-    ui.settingsRiskSlider.value = defaultValue;
-    ui.settingsRiskLabel.textContent = `(${defaultValue}/9 เสียง)`;
-    // (ยังไม่เซฟ จนกว่าจะกด บันทึก)
+    updateRiskSliderUI(defaultValue);
+}
+// (ฟังก์ชันกลางสำหรับอัปเดต Slider UI)
+function updateRiskSliderUI(value = null) {
+    if (value) {
+        ui.settingsRiskSlider.value = value;
+    } else {
+        value = ui.settingsRiskSlider.value;
+    }
+    
+    if (appSettings.useMetaMind) {
+        // (โหมด Meta-mind: 1-9)
+        const riskMap = {
+            1: "บุกหนัก (Aggressive) (1)",
+            2: "บุกหนัก (Aggressive) (2)",
+            3: "บุก (Aggressive) (3)",
+            4: "สมดุล (Balanced) (4)",
+            5: "สมดุล (Balanced) (5)",
+            6: "สมดุล (Balanced) (6)",
+            7: "ปลอดภัย (Safe) (7)",
+            8: "ปลอดภัย (Safe) (8)",
+            9: "ปลอดภัยมาก (Very Safe) (9)"
+        };
+        ui.settingsRiskLabel.textContent = riskMap[value];
+        ui.settingsRiskDesc.textContent = "ปรับ 'ระดับความเสี่ยง' ที่คุณยอมรับได้ (คำนวณจากคะแนน AI ถ่วงน้ำหนัก)";
+    } else {
+        // (โหมดปกติ: 1-9)
+        ui.settingsRiskLabel.textContent = `(${value}/9 เสียง)`;
+        ui.settingsRiskDesc.textContent = "ปรับ 'เสียงโหวต' ขั้นต่ำที่ AI (Hunter) ต้องมี ก่อนส่ง Signal";
+    }
 }
 
 
@@ -1508,26 +1542,30 @@ window.onRunBIST = function() {
     });
 }
 
-// (‼️‼️ เพิ่ม: Power Management ‼️‼️)
+// H. (‼️‼️ อัปเกรด: SETTINGS ‼️‼️)
 function saveSettings() {
     localStorage.setItem('oc_baccarat_settings', JSON.stringify({
         trigger: currentTriggerValue,
         powerMode: appSettings.powerMode,
-        haptics: appSettings.haptics
+        haptics: appSettings.haptics,
+        useMetaMind: appSettings.useMetaMind // (‼️‼️ เพิ่ม ‼️‼️)
     }));
 }
 function loadSettings() {
     const saved = localStorage.getItem('oc_baccarat_settings');
     if (saved) {
         const settings = JSON.parse(saved);
-        appSettings = settings;
+        // (ป้องกันข้อมูลเก่าพัง)
+        appSettings.powerMode = settings.powerMode || false;
+        appSettings.haptics = (settings.haptics !== undefined) ? settings.haptics : true;
+        appSettings.useMetaMind = settings.useMetaMind || false; // (‼️‼️ เพิ่ม ‼️‼️)
         currentTriggerValue = settings.trigger || 5;
     }
     // (อัปเดต UI)
     ui.settingsRiskSlider.value = currentTriggerValue;
-    ui.settingsRiskLabel.textContent = `(${currentTriggerValue}/9 เสียง)`;
     ui.togglePowerMode.checked = appSettings.powerMode;
     ui.toggleHaptics.checked = !appSettings.haptics;
+    ui.toggleMetaMind.checked = appSettings.useMetaMind; // (‼️‼️ เพิ่ม ‼️‼️)
 }
 window.onTogglePowerMode = function(isChecked) {
     appSettings.powerMode = isChecked;
@@ -1539,13 +1577,24 @@ window.onToggleHaptics = function(isChecked) {
     appSettings.haptics = !isChecked; // (Checkbox คือ "ปิด")
     saveSettings();
 }
+// (‼️‼️ เพิ่ม: META-MIND TOGGLE ‼️‼️)
+window.onToggleMetaMind = function(isChecked) {
+    appSettings.useMetaMind = isChecked;
+    saveSettings();
+    aiWorker.postMessage({ command: 'UPDATE_CONFIG', config: { useMetaMind: isChecked } });
+    updateRiskSliderUI(); // (อัปเดตข้อความ Slider)
+    alert('Meta-mind (AI ถ่วงน้ำหนัก): ' + (isChecked ? 'เปิด (God-Tier)' : 'ปิด (โหมดปกติ)'));
+}
 
 
 // 9. Modal Controls (การเปิด/ปิดหน้าต่าง)
 window.openModal = function(id) { 
     if (id === 'historyHubModal') {
-        // (พิเศษ: ให้ History Hub โหลดข้อมูลสรุปขอนไพ่)
         aiWorker.postMessage({ command: 'GET_SHOE_SUMMARY' });
+    }
+    // (อัปเดต UI Slider ทุกครั้งที่เปิด Setting)
+    if (id === 'settingsModal') {
+        updateRiskSliderUI(currentTriggerValue);
     }
     document.getElementById(id).style.display = 'block'; 
 }
