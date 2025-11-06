@@ -1,7 +1,7 @@
 /* ========== PART 3: AI BRAIN (WEB WORKER) ========== */
 /*
  * นี่คือ "สมอง AI" (God-Tier) ฉบับสมบูรณ์
- * (ฉบับแก้ไข: "หายนะ Winrate" v10)
+ * (ฉบับแก้ไข: v11 - แก้ไขบั๊ก Restart, Delete Shoe, อัปเกรด AI)
  * ทำหน้าที่: คำนวณตรรกะ AI ทั้งหมด, จัดการฐานข้อมูล (IndexedDB)
  * มันทำงานแยกขาดจาก "หน้าจอ" (UI) โดยสิ้นเชิง
  */
@@ -22,8 +22,9 @@ const AI_CONFIG = {
     // (จำนวนครั้ง) "Simulator" จะจำลองอนาคตตาละกี่ครั้ง
     SIMULATOR_ITERATIONS: 10000,
     
-    // (แก้แผล "Memory Leak") - รีสตาร์ทสมองทุกๆ กี่ตา (0 = ปิด)
-    MEMORY_RESTART_INTERVAL: 1000 // (รีสตาร์ททุก 1,000 ตา)
+    // (แก้แผล "Memory Leak") - รีสตาร์ทสมองทุกๆ กี่ตา
+    // (‼️‼️ แก้ไขถาวร: 0 = ปิด ‼️‼️)
+    MEMORY_RESTART_INTERVAL: 0
 };
 
 let CONFIG = {}; // (ประกาศตัวแปร CONFIG)
@@ -144,22 +145,35 @@ function safeGetAll(storeName) {
          }
     });
 }
-
+function safeDelete(storeName, key) {
+     return new Promise((resolve, reject) => {
+         try {
+            const tx = DB.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
+            const req = store.delete(key);
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
+         } catch (e) {
+             reject(e);
+         }
+    });
+}
 
 // ========== 4. CORE LOGIC: ACTIONS (การกระทำ) ==========
 
 // (เมื่อผู้ใช้กดปุ่ม)
 async function addHand(result, lastSignal) {
+    // (‼️‼️ ย้าย: checkMemoryRestart() ออกจาก runAnalysis มาที่นี่ ‼️‼️)
+    await checkMemoryRestart();
+    
     const currentShoeId = await getCurrentShoeId();
     
-    // (‼️‼️ นี่คือ "การแก้ไข" บั๊ก Winrate ‼️‼️)
     // (1. "ตัดสิน" (Judge) ผลแพ้/ชนะ)
     let signalWin = null; // (null = ไม่นับ)
     const finalPred = lastSignal.finalPrediction;
     const actualResult = result[0];
     
     if (finalPred && finalPred !== 'WAIT' && finalPred !== 'T' && actualResult !== 'T') {
-        // (ถ้า "นักล่า" (Hunter) "ยิง" (Fire) (P/B) และผล "ไม่" (Not) เสมอ)
         signalWin = (finalPred === actualResult); // (true = ชนะ, false = แพ้)
     }
     
@@ -184,7 +198,6 @@ async function addHand(result, lastSignal) {
 
 // (เมื่อผู้ใช้กด UNDO)
 async function undoLastHand() {
-    // (เราต้อง "ล็อค" หลายตาราง)
     const tx = DB.transaction(['game_history', 'global_stats', 'expert_performance'], 'readwrite');
     const store_game = tx.objectStore('game_history');
     
@@ -196,7 +209,6 @@ async function undoLastHand() {
             if (cursor) {
                 const handToRemove = cursor.value;
                 
-                // (‼️‼️ นี่คือ "การแก้ไข" บั๊ก Winrate ‼️‼️)
                 // (ย้อนกลับ "ตารางสรุป" และ "ประสิทธิภาพ")
                 await reverseGlobalStats(handToRemove);
                 await reverseExpertPerformance(handToRemove);
@@ -226,13 +238,10 @@ async function editHistory(handId, newResult) {
     if (oldData) {
         const newData = { ...oldData, result: newResult };
         
-        // (‼️‼️ "การแก้ไข" บั๊ก Winrate ‼️‼️)
         // (เราต้อง "Re-train" สถิติที่เกี่ยวข้องทั้งหมด)
         await reverseGlobalStats(oldData);
         await updateGlobalStats(newData);
         await reverseExpertPerformance(oldData);
-        // (เรา "ไม่" (Cannot) updateExpertPerformance(newData) ... 
-        // ...เพราะเรา "ไม่" (Don't) รู้ว่า lastSignal "ควร" (Should) จะเป็นอะไร)
         
         await safeWrite('game_history', newData);
         
@@ -253,13 +262,48 @@ async function loadLastState() {
     return runAnalysis(null);
 }
 
+// (‼️‼️ เพิ่ม: "ลบขอนนี้" (ฉบับสมบูรณ์) ‼️‼️)
+async function deleteCurrentShoe() {
+    const currentShoeId = await getCurrentShoeId();
+    if (currentShoeId <= 1) throw new Error("ไม่สามารถลบขอนไพ่เริ่มต้น (Genesis Block) ได้");
+
+    const shoeHistory = await getShoeHistory(currentShoeId);
+    
+    // (เปิด Transaction ใหญ่)
+    const tx = DB.transaction(['game_history', 'global_stats', 'expert_performance', 'shoe_meta'], 'readwrite');
+    const store_game = tx.objectStore('game_history');
+    
+    for (const hand of shoeHistory) {
+        // (ย้อนสถิติทั้งหมด)
+        await reverseGlobalStats(hand);
+        await reverseExpertPerformance(hand);
+        // (ลบข้อมูลตา)
+        store_game.delete(hand.id);
+    }
+    
+    // (ลบขอนไพ่)
+    tx.objectStore('shoe_meta').delete(currentShoeId);
+    
+    return new Promise((resolve, reject) => {
+        tx.oncomplete = () => {
+            console.log(`WORKER: ลบขอนไพ่ #${currentShoeId} ( ${shoeHistory.length} ตา) สำเร็จ`);
+            resolve();
+        };
+        tx.onerror = (e) => {
+            console.error("WORKER: ลบขอนไพ่ล้มเหลว", e.target.error);
+            reject(e.target.error);
+        };
+    });
+}
+
+
 // ========== 5. CORE LOGIC: AI ANALYSIS (การวิเคราะห์) ==========
 
 let lastExpertVotes = {};
 
 async function runAnalysis(lastHandId) {
     
-    await checkMemoryRestart();
+    // (‼️‼️ ย้าย: checkMemoryRestart() ไปที่ addHand() แล้ว ‼️‼️)
     
     const currentShoeId = await getCurrentShoeId();
     const [globalStats, shoeHistory, expertPerformance] = await Promise.all([
@@ -268,8 +312,6 @@ async function runAnalysis(lastHandId) {
         getExpertPerformance()
     ]);
     
-    // (‼️‼️ นี่คือ "การแก้ไข" บั๊ก Winrate ‼️‼️)
-    // (ตอนนี้ shoeStats จะ "คำนวณ" (Calculate) Win/Loss ได้ถูกต้องแล้ว)
     const shoeStats = calculateShoeStats(shoeHistory);
     
     const votes = {};
@@ -281,7 +323,7 @@ async function runAnalysis(lastHandId) {
     votes.simA = expertSimulator(shoeStats, globalStats, 'stats');
     votes.simB = expertSimulator(shoeStats, globalStats, 'pattern');
     votes.simC = expertSimulator(shoeStats, globalStats, 'chaos');
-    votes.miner = expertMiner(shoeHistory, globalStats); // (‼️‼️ เพิ่ม "นักขุด" ‼️‼️)
+    votes.miner = expertMiner(shoeHistory, globalStats);
 
     const exploredVotes = applyExploration(votes, expertPerformance);
     const weightedVotes = applyWeighting(exploredVotes, expertPerformance);
@@ -303,7 +345,29 @@ async function runAnalysis(lastHandId) {
 
 // ========== 6. AI EXPERTS (ผู้เชี่ยวชาญ 9 ตัว) ==========
 // (Placeholder ตรรกะง่ายๆ)
-function expertMainPatterns(h) { if (h.length < 2) return 'WAIT'; const last = h[h.length-1].result[0]; const prev = h[h.length-2].result[0]; if (last === prev) return last; return 'WAIT'; } // (ตามมังกร)
+
+// (‼️‼️ อัปเกรด: ให้รู้จัก "ปิงปอง" ‼️‼️)
+function expertMainPatterns(h) {
+    if (h.length < 2) return 'WAIT';
+    const last = h[h.length-1].result[0];
+    const prev = h[h.length-2].result[0];
+
+    // ตามมังกร (Dragon) (PP -> P)
+    if (last === prev && last !== 'T') return last; 
+    
+    if (h.length < 4) return 'WAIT';
+    const prev2 = h[h.length-3].result[0];
+    const prev3 = h[h.length-4].result[0];
+
+    // ตามปิงปอง (Ping Pong) (PBPB -> P)
+    // (h = [..., P, B, P, B]) -> last=B, prev=P, prev2=B, prev3=P
+    if (last === prev2 && prev === prev3 && last !== prev && last !== 'T' && prev !== 'T') {
+        return (last === 'P' ? 'B' : 'P'); // (B -> P)
+    }
+    
+    return 'WAIT';
+}
+
 function expertDerivedRoads(h) { if (h.length < 4) return 'WAIT'; const r = h.slice(-4).map(x=>x.result[0]).join(''); if(r==='PBPB') return 'P'; if(r==='BPBP') return 'B'; return 'WAIT'; } // (ตามปิงปอง)
 function expertCardRules(h) { if (h.length < 1) return 'WAIT'; const r = h[h.length-1].result; if(r==='P3' || r==='B3') return 'B'; if(r==='P2' || r==='B2') return 'P'; return 'WAIT'; } // (กฎ P3/B3 -> B)
 function expertStats(s) { if(s.P > s.B + 3) return 'P'; if(s.B > s.P + 3) return 'B'; return 'WAIT'; } // (ตามฝั่งนำ)
@@ -332,8 +396,6 @@ function getFinalSignal(votes, riskThreshold) {
     if (voteCounts.B > maxVotes) { maxVotes = voteCounts.B; finalPrediction = 'B'; }
     if (voteCounts.T > maxVotes) { maxVotes = voteCounts.T; finalPrediction = 'T'; }
     
-    // (‼️‼️ นี่คือ "การแก้ไข" บั๊ก Winrate ‼️‼️)
-    // (riskThreshold อ้างอิงจาก CONFIG ที่รับมาจาก UI)
     if (maxVotes < CONFIG.riskThreshold || (voteCounts.P === voteCounts.B && maxVotes > 0)) {
         finalPrediction = 'WAIT';
     }
@@ -361,7 +423,6 @@ async function checkGenesisBlock() {
 }
 // (‼️‼️ "โค้ดที่แก้ไข" Deadlock ‼️‼️)
 async function runGenesisBlock() {
-    // (ตรรกะ "ปลอดภัย" (Safe) แต่ "ช้า" (Slow))
     const currentShoeId = 1;
     await safeAdd('shoe_meta', { startTime: Date.now() });
 
@@ -369,7 +430,6 @@ async function runGenesisBlock() {
     
     for (const result of GENESIS_BLOCK_DATA) {
         const handResult = result === 'T' ? 'T' : (result + '_UNKNOWN');
-        // (เรา "ไม่" บันทึก "แพ้/ชนะ" ใน Genesis Block)
         const handData = { result: handResult, shoe: currentShoeId, timestamp: Date.now(), lastSignal: {}, signalWin: null };
         
         await safeAdd('game_history', handData); 
@@ -381,7 +441,6 @@ async function runGenesisBlock() {
         });
     }
     
-    // (บันทึกสถิติ "ทีละตัว" - "ปลอดภัย" 100%)
     for (const key in stats) {
         await safeWrite('global_stats', { key: key, value: stats[key] });
     }
@@ -402,7 +461,6 @@ async function updateGlobalStats(handData) {
     const mainResult = result[0];
     const keys = ['TOTAL_HANDS', mainResult, result];
     
-    // (‼️‼️ นี่คือ "การแก้ไข" บั๊ก Winrate ‼️‼️)
     if (handData.signalWin === true) {
         keys.push('HUNTER_WINS');
     } else if (handData.signalWin === false) {
@@ -420,7 +478,6 @@ async function reverseGlobalStats(handData) {
     const mainResult = result[0];
     const keys = ['TOTAL_HANDS', mainResult, result];
     
-    // (‼️‼️ นี่คือ "การแก้ไข" บั๊ก Winrate ‼️‼️)
     if (handData.signalWin === true) {
         keys.push('HUNTER_WINS');
     } else if (handData.signalWin === false) {
@@ -448,7 +505,9 @@ async function updateExpertPerformance(handData) {
     const actualResult = handData.result[0];
     if (actualResult === 'T') return;
     
-    const votes = lastExpertVotes;
+    // (‼️‼️ แก้ไข: ใช้ "lastSignal" ที่ "บันทึก" ไว้ ‼️‼️)
+    const votes = handData.lastSignal;
+    if (!votes || Object.keys(votes).length === 0) return; // (ป้องกัน Error ถ้า lastSignal ว่าง)
     
     for (const expertKey in votes) {
         const prediction = votes[expertKey];
@@ -468,7 +527,7 @@ async function reverseExpertPerformance(handData) {
     if (actualResult === 'T') return;
     
     const votes = handData.lastSignal;
-    if (!votes) return; // (ป้องกัน Error ถ้า lastSignal ว่าง)
+    if (!votes || Object.keys(votes).length === 0) return; // (ป้องกัน Error ถ้า lastSignal ว่าง)
     
     for (const expertKey in votes) {
         const prediction = votes[expertKey];
@@ -476,9 +535,13 @@ async function reverseExpertPerformance(handData) {
             
         const data = await safeGet('expert_performance', expertKey);
         if (data) {
-            if (prediction === actualResult) data.stats.wins--;
-            else data.stats.losses--;
-            data.stats.total--;
+            if (prediction === actualResult) {
+                if (data.stats.wins > 0) data.stats.wins--;
+            } else {
+                if (data.stats.losses > 0) data.stats.losses--;
+            }
+            if (data.stats.total > 0) data.stats.total--;
+            
             await safeWrite('expert_performance', data);
         }
     }
@@ -486,19 +549,17 @@ async function reverseExpertPerformance(handData) {
 
 // (Helper - คำนวณสถิติขอนนี้)
 function calculateShoeStats(shoeHistory) {
-    // (‼️‼️ นี่คือ "การแก้ไข" บั๊ก Winrate ‼️‼️)
     const stats = { P: 0, B: 0, T: 0, P2: 0, P3: 0, B2: 0, B3: 0, P_UNKNOWN: 0, B_UNKNOWN: 0, totalHands: 0, wins: 0, losses: 0, winrate: 0 };
     
     shoeHistory.forEach(h => {
         stats.totalHands++;
-        if (h.result) { // (ป้องกัน Error ถ้าข้อมูล "เน่า")
+        if (h.result) { 
             stats[h.result]++; 
             if(h.result[0] === 'P') stats.P++;
             if(h.result[0] === 'B') stats.B++;
             if(h.result[0] === 'T') stats.T++;
         }
         
-        // (นับแพ้/ชนะ "เฉพาะขอนนี้")
         if (h.signalWin === true) {
             stats.wins++;
         } else if (h.signalWin === false) {
@@ -506,7 +567,6 @@ function calculateShoeStats(shoeHistory) {
         }
     });
     
-    // (คำนวณ Winrate)
     const totalDecisions = stats.wins + stats.losses;
     if (totalDecisions > 0) {
         stats.winrate = Math.round((stats.wins / totalDecisions) * 100);
@@ -577,12 +637,11 @@ async function retrainFromCSV(csvString) {
     const headers = headerLine.split(',');
     
     const totalLines = lines.length;
-    const chunkSize = 500; // (ระบบหั่นไฟล์ "ปลอดภัย")
+    const chunkSize = 500; 
     
     let currentShoe = 0;
 
     for (let i = 0; i < totalLines; i += chunkSize) {
-        // (เราจะใช้ "ตรรกะปลอดภัย" (Safe) แต่ "ช้า" (Slow))
         const chunk = lines.slice(i, i + chunkSize);
         
         for (const line of chunk) {
@@ -596,19 +655,16 @@ async function retrainFromCSV(csvString) {
                 }
             });
             
-            delete hand.id; // (ให้ DB สร้าง ID ใหม่)
+            delete hand.id; 
             
-            // (สร้างขอนไพ่ ถ้าจำเป็น)
             if (hand.shoe > currentShoe) {
                 await safeAdd('shoe_meta', { startTime: hand.timestamp });
                 currentShoe = hand.shoe;
             }
             
-            // (‼️‼️ นี่คือ "การแก้ไข" บั๊ก Winrate ‼️‼️)
             hand.signalWin = null;
             hand.lastSignal = {};
             
-            // (อัปเดตสถิติทีละตัว - ปลอดภัย)
             await safeAdd('game_history', hand);
             await updateGlobalStats(hand);
         }
@@ -656,14 +712,40 @@ async function runBIST() {
 
 // (แก้แผล "Memory Leak")
 async function checkMemoryRestart() {
-    if (AI_CONFIG.MEMORY_RESTART_INTERVAL === 0) return; // (ปิดไว้)
+    // (‼️‼️ แก้ไขถาวร: ถ้าเป็น 0 ให้ "ปิด" ‼️‼️)
+    if (CONFIG.MEMORY_RESTART_INTERVAL === 0) return; 
     
     const count = await getHandCount();
-    if (count > 0 && count % AI_CONFIG.MEMORY_RESTART_INTERVAL === 0) {
+    if (count > 0 && count % CONFIG.MEMORY_RESTART_INTERVAL === 0) {
         console.log(`WORKER: Reached ${count} hands. Restarting worker to clear memory...`);
         postMessage({ command: 'FATAL_ERROR_FROM_WORKER', message: `ระบบรีสตาร์ทอัตโนมัติ (เพื่อล้างหน่วยความจำ)... กรุณารอสักครู่` });
         self.close(); // (ฆ่าตัวตาย)
     }
+}
+
+// (‼️‼️ เพิ่ม: "สรุปประวัติขอนไพ่" (ฉบับสมบูรณ์) ‼️‼️)
+async function getShoeSummary() {
+    const allShoesMeta = await safeGetAll('shoe_meta');
+    
+    // (จำกัดแค่ 5 ขอนล่าสุด เพื่อความเร็ว)
+    const recentShoesMeta = allShoesMeta.slice(-5).reverse();
+    const summary = [];
+    
+    const currentShoeId = await getCurrentShoeId();
+    
+    for (const meta of recentShoesMeta) {
+        const shoeHistory = await getShoeHistory(meta.id);
+        const stats = calculateShoeStats(shoeHistory);
+        summary.push({
+            id: meta.id,
+            isCurrent: meta.id === currentShoeId,
+            P: stats.P,
+            B: stats.B,
+            T: stats.T,
+            totalHands: stats.totalHands
+        });
+    }
+    return summary;
 }
 
 
@@ -719,12 +801,12 @@ self.onmessage = async (e) => {
                 case 'RUN_BIST':
                     return { command: 'BIST_RESULT', ...await runBIST() };
                 
-                // (‼️‼️ เพิ่ม: "ลบขอนนี้" ‼️‼️)
+                // (‼️‼️ แก้ไข: "ลบขอนนี้" ‼️‼️)
                 case 'DELETE_CURRENT_SHOE':
                     await deleteCurrentShoe();
                     return { command: 'ANALYSIS_COMPLETE', state: await loadLastState() };
                     
-                // (‼️‼️ เพิ่ม: "สรุปประวัติขอนไพ่" ‼️‼️)
+                // (‼️‼️ แก้ไข: "สรุปประวัติขอนไพ่" ‼️‼️)
                 case 'GET_SHOE_SUMMARY':
                     return { command: 'SHOE_SUMMARY_LOADED', summary: await getShoeSummary() };
                 
@@ -733,12 +815,10 @@ self.onmessage = async (e) => {
             }
         };
         
-        // (‼️‼️ นี่คือ "บั๊ก" ที่แก้ไขแล้ว ‼️‼️)
         const response = await process(data.command);
         if (response) postMessage(response);
 
     } catch (error) {
-        // ส่ง "ข้อผิดพลาด" กลับไปหน้าจอ
         console.error(`WORKER: Error processing command ${data.command}:`, error);
         postMessage({ 
             command: 'ACTION_FAILED', 
@@ -746,40 +826,5 @@ self.onmessage = async (e) => {
         });
     }
 };
-
-// (‼️‼️ "ยังไม่ได้เขียน" ฟังก์ชัน 2 ตัวนี้ ‼️‼️)
-async function deleteCurrentShoe() {
-    // (Placeholder)
-    const currentShoeId = await getCurrentShoeId();
-    if (currentShoeId <= 1) throw new Error("ไม่สามารถลบขอนไพ่เริ่มต้นได้");
-    
-    // (1. ลบประวัติ)
-    const tx_game = DB.transaction('game_history', 'readwrite');
-    const store_game = tx_game.objectStore('game_history');
-    const index_game = store_game.index('shoe_index');
-    const req_game = index_game.openCursor(currentShoeId);
-    
-    req_game.onsuccess = (e) => {
-        const cursor = e.target.result;
-        if (cursor) {
-            cursor.delete();
-            cursor.continue();
-        }
-    };
-    
-    // (2. ลบขอนไพ่)
-    await safeWrite('shoe_meta', { id: currentShoeId, deleted: true }); // (Placeholder: ควรลบจริง)
-    
-    // (TODO: ต้อง "ย้อน" สถิติทั้งหมดของขอนนี้)
-    console.log("WORKER: 'DELETE_CURRENT_SHOE' (ยังไม่ได้ทำ 'ย้อนสถิติ')");
-    return;
-}
-async function getShoeSummary() {
-    // (Placeholder)
-     console.log("WORKER: 'GET_SHOE_SUMMARY' (ยังไม่ได้ทำ)");
-    const shoeHistory = await getShoeHistory(await getCurrentShoeId());
-    const stats = calculateShoeStats(shoeHistory);
-    return [{id: await getCurrentShoeId(), isCurrent: true, P: stats.P, B: stats.B, T: stats.T, totalHands: stats.totalHands}];
-}
 
 console.log("WORKER: 'สมอง AI' (worker.js) โหลดแล้ว พร้อมรับคำสั่ง...");
