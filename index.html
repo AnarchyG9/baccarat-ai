@@ -106,6 +106,19 @@ button,input,select,textarea{font-family:inherit}
 .progress{width:100%;height:4px;background:var(--glass);border-radius:4px;overflow:hidden;margin-top:4px}
 .progress > div{height:100%;width:0;background:var(--gold);transition:width 0.5s ease}
 
+/* ========== (‼️‼️ เพิ่ม: BETTING STRATEGY ‼️‼️) ========== */
+#betSuggestion {
+    font-size: 28px;
+    margin: 0;
+    transition: color 0.3s ease;
+}
+#betReason {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+/* ========== (จบส่วนเพิ่ม) ========== */
+
+
 /* ========== 6. BUTTON CONTROLS (Smart Interface) ========== */
 .controls-grid{
   display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;
@@ -366,7 +379,14 @@ button,input,select,textarea{font-family:inherit}
         <div class="progress"><div id="progressBar"></div></div>
         <div id="condBox" class="pred-muted" style="width:100%;text-align:center">เงื่อนไข: กำลังรอผล...</div>
       </div>
-
+      
+      <div class="panel" id="bettingPanel">
+        <h2>💡 คำแนะนำการเดินเงิน</h2>
+        <div style="text-align:center; padding: 10px 0;">
+          <h3 id="betSuggestion" style="font-size: 28px; margin: 0; color: var(--text-muted);">-</h3>
+          <div id="betReason" style="font-size: 13px; color: var(--text-muted;">รอ Signal...</div>
+        </div>
+      </div>
       <div class="panel">
         <h2>บันทึกผลลัพธ์ <span class="muted">(แตะ = เร็ว / แตะค้าง = ละเอียด)</span></h2>
         <div class="controls-grid" id="controlsGrid">
@@ -478,8 +498,8 @@ button,input,select,textarea{font-family:inherit}
     </div>
     
     <div class="panel">
-      <h2>ประวัติขอนไพ่</h2>
-      <div id="shoeHistorySummary" style="max-height: 150px; overflow-y: auto; font-size: 13px; color: var(--text-muted);">
+      <h2>ประวัติขอนไพ่ (5 ขอนล่าสุด)</h2>
+      <div id="shoeHistorySummary" style="max-height: 200px; overflow-y: auto; font-size: 13px; color: var(--text-muted);">
         กำลังโหลด...
       </div>
     </div>
@@ -646,6 +666,11 @@ const ui = {
     controlsGrid: document.getElementById('controlsGrid'),
     quickControls: document.getElementById('quickControls'),
     
+    // (‼️‼️ เพิ่ม: BETTING STRATEGY ‼️‼️)
+    bettingPanel: document.getElementById('bettingPanel'),
+    betSuggestion: document.getElementById('betSuggestion'),
+    betReason: document.getElementById('betReason'),
+    
     // (Smart Interface 3 ปุ่ม)
     btnPlayer: document.getElementById('btnPlayer'),
     btnBanker: document.getElementById('btnBanker'),
@@ -735,7 +760,9 @@ function initializeWorker() {
     if (window.Worker) {
         document.getElementById('loaderStatus').textContent = "สถานะ: กำลังสตาร์ท 'สมอง AI'...";
         try {
-            aiWorker = new Worker('worker.js'); 
+            // (‼️‼️ แก้ไข: Cache Busting ‼️‼️)
+            aiWorker = new Worker('worker.js?v=1.0.1'); 
+            
             aiWorker.onmessage = handleWorkerMessage;
             aiWorker.onerror = handleWorkerError;
             
@@ -915,6 +942,10 @@ function updateUI(state) {
     
     ui.confText.textContent = `ความมั่นใจ: ${state.signal.confidence || 0}%`;
     
+    // (‼️‼️ เพิ่ม ‼️‼️)
+    // 1B. อัปเดต คำแนะนำการเดินเงิน
+    updateBettingStrategy(state.signal);
+    
     // 2. อัปเดต Winrate
     ui.winRateShoe.textContent = `${state.stats.shoe.winrate || 0} %`;
     ui.winShoe.textContent = state.stats.shoe.wins || 0;
@@ -938,7 +969,29 @@ function updateUI(state) {
     setControlsDisabled(false);
 }
 
-// B. อัปเดตแดชบอร์ด AI (Shadow Mode)
+// B. (‼️‼️ เพิ่ม: BETTING STRATEGY ‼️‼️)
+function updateBettingStrategy(signal) {
+    const pred = signal.finalPrediction;
+    const conf = signal.confidence;
+    
+    if (pred === 'WAIT' || pred === '-' || pred === 'T') {
+        ui.betSuggestion.textContent = "รอดู (WAIT)";
+        ui.betReason.textContent = "รอ Signal ที่มีความมั่นใจสูง";
+        ui.betSuggestion.style.color = "var(--text-muted)";
+    } else {
+        if (conf >= 80) { // (8/9 or 9/9 votes)
+            ui.betSuggestion.textContent = "2 หน่วย (Units)";
+            ui.betReason.textContent = `มั่นใจสูง (${conf}%) ใน ${pred}`;
+            ui.betSuggestion.style.color = "var(--green)";
+        } else { // (5/9, 6/9, 7/9 votes)
+            ui.betSuggestion.textContent = "1 หน่วย (Unit)";
+            ui.betReason.textContent = `มั่นใจปานกลาง (${conf}%) ใน ${pred}`;
+            ui.betSuggestion.style.color = "var(--gold)";
+        }
+    }
+}
+
+// C. อัปเดตแดชบอร์ด AI (Shadow Mode)
 function updateExpertDashboard(votes, performance) {
     const setVote = (el, vote) => {
         if (!vote || vote === 'WAIT') {
@@ -976,7 +1029,7 @@ function updateExpertDashboard(votes, performance) {
     setVote(ui.expFinal, votes.finalPrediction);
 }
 
-// C. อัปเดต Big Road
+// D. อัปเดต Big Road
 function renderBigRoad(history) {
     ui.bigroad.innerHTML = '';
     if (!history || history.length === 0) return;
@@ -1045,7 +1098,7 @@ function renderBigRoad(history) {
     ui.bigroad.scrollLeft = ui.bigroad.scrollWidth;
 }
 
-// D. อัปเดตหน้าต่างแก้ไขประวัติ
+// E. อัปเดตหน้าต่างแก้ไขประวัติ
 function renderHistoryEditor(history, filter) {
     ui.historyEditorBody.innerHTML = '';
     if (!history || history.length === 0) {
@@ -1111,7 +1164,8 @@ function renderShoeSummary(summary) {
         return;
     }
     ui.shoeHistorySummary.innerHTML = '';
-    summary.reverse().forEach(shoe => {
+    // (‼️‼️ แก้ไข: ไม่ต้อง reverse ‼️‼️)
+    summary.forEach(shoe => {
         const div = document.createElement('div');
         div.style.borderBottom = `1px solid var(--card-border)`;
         div.style.padding = `8px 4px`;
