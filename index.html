@@ -1,0 +1,1460 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>OC Baccarat AI [God-Tier]</title>
+<link rel="manifest" href="manifest.json">
+<style>
+/* ========== 1. ROOT VARIABLES & GLOBAL RESET ========== */
+:root{
+  --bg: #000000;
+  --bg-gradient: linear-gradient(180deg, #0a0a0a, #000000);
+  --card: #0d0d0d;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --shadow: rgba(0, 0, 0, 0.6);
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-light: rgba(255, 255, 255, 0.05);
+  
+  --text: #ececec;
+  --text-muted: #888;
+  --text-dark: #555;
+  
+  --blue: #007bff;
+  --blue-glow: 0 0 18px rgba(0,123,255,0.4);
+  --red: #dc3545;
+  --red-glow: 0 0 18px rgba(220,53,69,0.4);
+  --green: #28a745;
+  --green-glow: 0 0 18px rgba(40,167,69,0.4);
+  --gold: #d4af37;
+  --gold-glow: 0 0 18px rgba(212,175,55,0.4);
+  
+  --warn: #ffc107;
+  --error: #dc3545;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,"Noto Sans Thai",Arial;color:var(--text);background:var(--bg-gradient)}
+button,input,select,textarea{font-family:inherit}
+
+/* ========== 2. APP LAYOUT & GRID (‼️‼️ แก้ไข ‼️‼️) ========== */
+.app{max-width:980px;margin:0 auto;padding:12px;display:none} /* ซ่อนแอปไว้ก่อนตอนเริ่ม */
+/* (ลบ .grid-main 2 คอลัมน์ทิ้ง) */
+.grid-main{
+    display:grid;
+    grid-template-columns: 1fr; /* (เหลือ 1 คอลัมน์) */
+    gap:12px;
+    margin-top:12px;
+}
+.grid-col-1{display:flex;flex-direction:column;gap:12px;min-width:0} /* (min-width: 0 คือคาถาแก้จอล้น) */
+
+/* ========== 3. PANELS (CARDS) ========== */
+.panel{
+  background:var(--card);
+  border-radius:14px;
+  padding:14px 16px;
+  border:1px solid var(--card-border);
+  box-shadow:0 10px 40px var(--shadow);
+}
+.panel h2{font-size:16px;margin:0 0 12px 0;color:var(--text);border-bottom:1px solid var(--card-border);padding-bottom:10px}
+.panel h2 .muted{font-size:13px;color:var(--text-muted);font-weight:400;margin-left:8px}
+
+/* ========== 4. HEADER & LOGO ========== */
+.header{display:flex;justify-content:space-between;align-items:center}
+.h-title{display:flex;gap:12px;align-items:center}
+.logo{
+  width:46px;height:46px;border-radius:10px;
+  background:linear-gradient(135deg,var(--gold),#c79b28);
+  display:flex;align-items:center;justify-content:center;
+  color:#000;font-weight:900;font-size:20px;
+  box-shadow:0 6px 18px rgba(212,175,55,0.18), inset 0 -4px 12px rgba(255,255,255,0.06);
+}
+.header h1{font-size:18px;margin:0 0 4px 0}
+.counter{font-size:13px;color:var(--text-muted)}
+
+/* ========== 5. PREDICTION SIGNAL (Main) ========== */
+.pred-card{
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  background:linear-gradient(180deg, var(--glass), rgba(0,0,0,0.1));
+}
+.pred-circle{
+  width:160px;height:160px;border-radius:999px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:48px;font-weight:900;color:var(--text);
+  text-shadow:0 4px 18px var(--shadow);
+  box-shadow:0 12px 40px var(--shadow), inset 0 -8px 24px var(--glass);
+  transition:all 0.3s ease;
+  background:linear-gradient(180deg,#333,#111); /* Default 'WAIT' state */
+}
+/* (‼️‼️ เพิ่ม: แอนิเมชั่น "ชีพจร" ‼️‼️) */
+.pred-circle.waiting {
+    animation: breathing 2.5s infinite ease-in-out;
+}
+@keyframes breathing {
+    0% { box-shadow:0 12px 40px var(--shadow), inset 0 -8px 24px var(--glass); }
+    50% { box-shadow:0 12px 50px rgba(150,150,150,0.2), inset 0 -8px 24px var(--glass); }
+    100% { box-shadow:0 12px 40px var(--shadow), inset 0 -8px 24px var(--glass); }
+}
+/* (‼️‼️ เพิ่ม: แอนิเมชั่น "นักล่า" ‼️‼️) */
+.pred-circle.P{background:linear-gradient(180deg,var(--blue),#1e6fe8); box-shadow:var(--blue-glow),0 12px 40px var(--shadow), inset 0 -8px 24px var(--glass); animation: pulse-blue 1s ease-out;}
+.pred-circle.B{background:linear-gradient(180deg,var(--red),#b02a2a); box-shadow:var(--red-glow),0 12px 40px var(--shadow), inset 0 -8px 24px var(--glass); animation: pulse-red 1s ease-out;}
+.pred-circle.T{background:linear-gradient(180deg,var(--green),#1f8b3a); box-shadow:var(--green-glow),0 12px 40px var(--shadow), inset 0 -8px 24px var(--glass); animation: pulse-green 1s ease-out;}
+@keyframes pulse-blue { from { box-shadow:0 0 60px rgba(0,123,255,0.8); } to { box-shadow:var(--blue-glow); } }
+@keyframes pulse-red { from { box-shadow:0 0 60px rgba(220,53,69,0.8); } to { box-shadow:var(--red-glow); } }
+@keyframes pulse-green { from { box-shadow:0 0 60px rgba(40,167,69,0.8); } to { box-shadow:var(--green-glow); } }
+
+.pred-muted{font-size:13px;color:var(--text-muted)}
+.progress{width:100%;height:4px;background:var(--glass);border-radius:4px;overflow:hidden;margin-top:4px}
+.progress > div{height:100%;width:0;background:var(--gold);transition:width 0.5s ease}
+
+/* ========== 6. BUTTON CONTROLS (Smart Interface) ========== */
+.controls-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;
+  position:relative; /* (สำหรับเมนูย่อย) */
+}
+.btn{
+  position:relative; overflow:hidden; /* for gloss effect */
+  padding:16px;border-radius:10px;border:0;
+  font-weight:800;font-size:18px;color:var(--text);
+  box-shadow:0 8px 20px var(--shadow);
+  cursor:pointer;
+  transition:all 0.2s ease;
+  user-select:none; /* (ป้องกันการเลือกข้อความ) */
+}
+.btn:active{transform:scale(0.97);box-shadow:0 4px 10px var(--shadow)}
+/* (‼️‼️ เพิ่ม: Dynamic Gloss (Placeholder) ‼️‼️) */
+.btn::after{
+  content:'';position:absolute;top:0;left:-50%;width:200%;height:60%;
+  background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.02));
+  transform:rotate(15deg);
+}
+.btnP{background:linear-gradient(180deg,var(--blue),#1e6fe8)}
+.btnB{background:linear-gradient(180deg,var(--red),#b02a2a)}
+.btnT{background:linear-gradient(180deg,var(--green),#1f8b3a);grid-column:1 / -1}
+
+/* (เมนูย่อย 'แตะค้าง' - Flyout Menu) */
+.flyout-menu{
+  display:none; /* (ซ่อนไว้) */
+  position:absolute;
+  bottom:100%; /* (เด้งขึ้นข้างบน) */
+  left:0;right:0;
+  margin:0 10% 10px 10%; /* (ลอยตรงกลาง) */
+  background:var(--card);
+  border:1px solid var(--card-border);
+  border-radius:10px;
+  box-shadow:0 -10px 40px var(--shadow);
+  z-index:10;
+  animation: flyout-in 0.2s ease-out;
+}
+.flyout-menu button{
+  display:block;width:100%;padding:14px;
+  background:transparent;border:0;color:var(--text);
+  font-size:15px;font-weight:600;
+}
+.flyout-menu button:first-child{border-bottom:1px solid var(--card-border)}
+.flyout-menu button:hover{background:var(--glass-light)}
+@keyframes flyout-in {
+  from { opacity:0; transform:translateY(20px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+.btn-small{
+  padding:8px 12px;font-size:13px;border-radius:8px;font-weight:600;
+  background:var(--glass-light);
+  border:1px solid var(--card-border);
+  /* (‼️‼️ แก้ไข: ฟ้อนต์สีขาว ‼️‼️) */
+  color: var(--text);
+}
+.btn-small:hover{background:var(--glass)}
+
+/* ========== 7. STATS & WINRATE ========== */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(100px, 1fr));gap:10px;width:100%;text-align:center;margin-top:10px}
+.stat-item h3{font-size:18px;margin:0 0 4px 0;color:var(--text)}
+.stat-item .label{font-size:12px;color:var(--text-muted)}
+.stat-item .win{color:var(--green)}
+.stat-item .lose{color:var(--red)}
+
+/* ========== 8. BIG ROAD (โค้ดแก้ไข) ========== */
+/* 8A. (กล่องหุ้ม) - (‼️‼️ นี่คือ "การแก้ไข" ‼️‼️) */
+.bigroad-wrap{
+  min-height:240px;
+  position:relative;
+  overflow-x:auto; /* (เพิ่มคำสั่ง "Scroll" แนวนอน) */
+  min-width:0; /* (เพิ่ม "คาถา" ปราบ Flexbox) */
+}
+/* 8B. (ตาราง) - (‼️‼️ นี่คือ "การแก้ไข" ‼️‼️) */
+.bigroad{
+  /* width:100%; (ลบ) */
+  height:220px;
+  /* overflow-x:auto; (ลบ) */
+  overflow-y:hidden;
+  background:transparent;padding:10px 6px;
+  display:grid;grid-auto-flow:column;grid-auto-columns:36px;
+  gap:6px;
+  border-top:1px solid var(--card-border);margin-top:12px;
+}
+/* ========== (จบส่วนแก้ไข) ========== */
+
+.br-col{display:grid;grid-auto-rows:36px;gap:6px}
+.br-cell{
+  width:34px;height:34px;border-radius:999px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;color:var(--text);font-size:13px;
+  box-shadow:0 6px 18px var(--shadow);
+  /* (‼️‼️ เพิ่ม: TIE Line ‼️‼️) */
+  position: relative;
+  overflow: hidden;
+}
+/* (‼️‼️ เพิ่ม: TIE Line ‼️‼️) */
+.br-cell .tie-line {
+    position: absolute;
+    width: 140%;
+    height: 4px;
+    background: var(--green);
+    transform: rotate(45deg);
+    box-shadow: 0 0 10px var(--green-glow);
+}
+/* Cell types for 2 vs 3 cards */
+.br-P{background:var(--blue)} /* 2-card win (solid) */
+.br-P3{background:transparent; border:3px solid var(--blue)} /* 3-card win (outline) */
+.br-P_UNKNOWN{background:rgba(0,123,255,0.5)} /* (Lazy Button) */
+.br-B{background:var(--red)}
+.br-B3{background:transparent; border:3px solid var(--red)}
+.br-B_UNKNOWN{background:rgba(220,53,69,0.5)} /* (Lazy Button) */
+/* .br-T (ลบ: TIE ไม่ใช่วงกลม) */
+
+
+/* ========== 9. AI DASHBOARD & SYSTEM STATUS (ย้ายไป Modal) ========== */
+.kv-list{display:flex;flex-direction:column;gap:10px;font-size:13px}
+.kv{display:flex;justify-content:space-between;align-items:center}
+.kv .key{color:var(--text-muted)}
+.kv .val{color:var(--text);font-weight:600}
+.kv .val.P{color:var(--blue)}
+.kv .val.B{color:var(--red)}
+.kv .val.T{color:var(--green)}
+.kv .val.warn{color:var(--warn)}
+.kv .val.ok{color:var(--green)}
+.kv .val.err{color:var(--error)}
+/* (สำหรับ Shadow Mode Winrate) */
+.expert-winrate{
+  font-size:11px; color:var(--text-muted); margin-left:8px;
+  background:var(--glass); padding:2px 4px; border-radius:4px;
+}
+/* (สำหรับ Trigger Slider) */
+.slider-controls{ margin-top: 10px; display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ========== 10. APP CONTROLS (Icons) ========== */
+.app-controls{display:flex;gap:10px}
+.icon-btn{
+  background:var(--glass-light);color:var(--text-muted);
+  border:1px solid var(--card-border);
+  width:38px;height:38px;border-radius:10px;
+  font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.icon-btn:hover{background:var(--glass);color:var(--text)}
+
+/* ========== 11. MODALS (Hidden Panels) ========== */
+.modal-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,0.7);backdrop-filter:blur(10px);
+  z-index:100;display:none; /* Hidden by default */
+}
+.modal-content{
+  position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);
+  width:90%;max-width:500px;
+  background:var(--card);border-radius:14px;
+  border:1px solid var(--card-border);
+  box-shadow:0 10px 60px var(--shadow);
+  padding:20px;
+  /* (เพิ่ม) ให้ Modal เลื่อนได้ ถ้าจอมันเล็ก */
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--card-border);padding-bottom:10px;margin-bottom:16px}
+.modal-header h2{margin:0;font-size:18px}
+.modal-close{font-size:24px;cursor:pointer;color:var(--text-muted)}
+/* Specific modal styles */
+#settingsRiskSlider{width:100%}
+#historyEditorTable{width:100%;font-size:13px;border-collapse:collapse}
+#historyEditorTable th, #historyEditorTable td{padding:8px;text-align:left;border-bottom:1px solid var(--card-border)}
+/* Tooltip/Help styles */
+.tooltip-content{font-size:14px;line-height:1.6;color:var(--text)}
+.tooltip-content strong{color:var(--gold)}
+
+/* (‼️‼️ เพิ่ม: "หน้าต่างยืนยัน 'กันพลาด'" ‼️‼️) */
+#confirmModal .modal-content { max-width: 320px; }
+#confirmModalBody { font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+#confirmModalButtons { display: flex; gap: 10px; }
+
+/* ========== 12. ERROR & STATUS OVERLAYS ========== */
+.status-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(220,53,69,0.9); /* Red error overlay */
+  backdrop-filter:blur(10px);
+  z-index:200;display:none; /* Hidden by default */
+  flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:20px;
+}
+.status-overlay h1{font-size:24px;color:#fff}
+.status-overlay p{font-size:16px;color:#fff;max-width:400px}
+/* Re-train Progress */
+#retrainOverlay{background:rgba(0,0,0,0.9)}
+#retrainProgress{width:80%;max-width:400px;height:20px;background:var(--glass);border-radius:10px;overflow:hidden;margin-top:16px}
+#retrainProgressBar{width:0;height:100%;background:var(--gold);transition:width 0.2s ease}
+
+/* ========== 13. LOADING OVERLAY ========== */
+#loadingOverlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:var(--bg-gradient);
+  z-index:9999;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  transition: opacity 0.5s ease;
+}
+.loader-logo{
+  width:60px;height:60px;border-radius:12px;
+  background:linear-gradient(135deg,var(--gold),#c79b28);
+  display:flex;align-items:center;justify-content:center;
+  color:#000;font-weight:900;font-size:24px;
+  box-shadow:0 6px 18px rgba(212,175,55,0.18);
+  animation: pulse 2s infinite ease-in-out;
+}
+.loader-text{
+  margin-top:16px;
+  font-size:14px;
+  color:var(--text-muted);
+}
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="loader-logo">OC</div>
+  <div class="loader-text" id="loaderStatus">กำลังอุ่นเครื่อง 'สมอง AI' (IndexedDB)...</div>
+</div>
+<div class="app" id="app">
+
+  <div class="header">
+    <div class="h-title">
+      <div class="logo">OC</div>
+      <div>
+        <h1>OC Baccarat AI</h1>
+        <div class="counter" id="appStatus">สถานะ: กำลังเริ่มต้น...</div>
+      </div>
+    </div>
+    <div class="app-controls">
+      <button class="icon-btn" id="btnToggleStats" title="สลับแดชบอร์ด AI" onclick="openModal('dashboardModal')">📈</button>
+      <button class="icon-btn" id="btnToggleSettings" title="ตั้งค่า" onclick="openModal('settingsModal')">⚙️</button>
+      <button class="icon-btn" id="btnToggleHelp" title="ช่วยเหลือ" onclick="openModal('helpModal')">❓</button>
+    </div>
+  </div>
+
+  <div class="grid-main">
+
+    <div class="grid-col-1">
+      
+      <div class="panel pred-card">
+        <div id="predCircle" class="pred-circle">-</div>
+        <div id="confText" class="pred-muted">ความมั่นใจ: -%</div>
+        <div class="progress"><div id="progressBar"></div></div>
+        <div id="condBox" class="pred-muted" style="width:100%;text-align:center">เงื่อนไข: กำลังรอผล...</div>
+      </div>
+
+      <div class="panel">
+        <h2>บันทึกผลลัพธ์ <span class="muted">(แตะ = เร็ว / แตะค้าง = ละเอียด)</span></h2>
+        <div class="controls-grid" id="controlsGrid">
+          <button class="btn btnP" id="btnPlayer">PLAYER</button>
+          <button class="btn btnB" id="btnBanker">BANKER</button>
+          <button class="btn btnT" id="btnTie">TIE</button>
+          
+          <div class="flyout-menu" id="flyoutP">
+            <button onclick="onResult('P3')">PLAYER (3 ใบ)</button>
+            <button onclick="onResult('P2')">PLAYER (2 ใบ)</button>
+          </div>
+          <div class="flyout-menu" id="flyoutB">
+            <button onclick="onResult('B3')">BANKER (3 ใบ)</button>
+            <button onclick="onResult('B2')">BANKER (2 ใบ)</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>ประสิทธิภาพ Signal (ตาที่ AI ส่ง Signal เท่านั้น)</h2>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <h3 id="winRateShoe" class="win">- %</h3>
+            <div class="label">Winrate (ขอนนี้)</div>
+          </div>
+          <div class="stat-item">
+            <h3><span id="winShoe" class="win">0</span> / <span id="loseShoe" class="lose">0</span></h3>
+            <div class="label">ชนะ / แพ้ (ขอนนี้)</div>
+          </div>
+          <div class="stat-item">
+            <h3 id="winRateGlobal">- %</h3>
+            <div class="label">Winrate (รวม)</div>
+          </div>
+          <div class="stat-item">
+            <h3><span id="winGlobal">0</span> / <span id="loseGlobal">0</span></h3>
+            <div class="label">ชนะ / แพ้ (รวม)</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="panel bigroad-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2>Big Road <span class="muted">(ทึบ=2ใบ / โปร่ง=3ใบ)</span></h2>
+          <div class="kv" style="font-size:13px">นับถอยหลัง: <span id="countdownText" style="color:var(--warn)">20</span>s</div>
+        </div>
+        <div id="bigroad" class="bigroad">
+          </div>
+      </div>
+    </div> </div> </div> <div class="modal-overlay" id="dashboardModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>📈 แดชบอร์ด & สถานะระบบ</h2>
+      <div class="modal-close" onclick="closeModal('dashboardModal')">&times;</div>
+    </div>
+    
+    <div id="advancedPanels" style="display:flex; flex-direction:column; gap:12px;">
+      <div class="panel">
+        <h2>🧠 แดชบอร์ด "สมอง AI" (Shadow Mode)</h2>
+        <div class="kv-list" id="aiDashboard">
+          <div class="kv"><div class="key">รูปแบบหลัก <span class="expert-winrate" id="perfMain">--%</span></div><div class="val" id="expMain">-</div></div>
+          <div class="kv"><div class="key">ตารางย่อย <span class="expert-winrate" id="perfDerived">--%</span></div><div class="val" id="expDerived">-</div></div>
+          <div class="kv"><div class="key">กฎไพ่ <span class="expert-winrate" id="perfRules">--%</span></div><div class="val" id="expRules">-</div></div>
+          <div class="kv"><div class="key">สถิติขอน <span class="expert-winrate" id="perfStats">--%</span></div><div class="val" id="expStats">-</div></div>
+          <div class="kv"><div class="key">กฎพิเศษ <span class="expert-winrate" id="perfSpecial">--%</span></div><div class="val" id="expSpecial">-</div></div>
+          <div class="kv"><div class="key">Sim: สถิติ <span class="expert-winrate" id="perfSimA">--%</span></div><div class="val" id="expSimA">-</div></div>
+          <div class="kv"><div class="key">Sim: รูปแบบ <span class="expert-winrate" id="perfSimB">--%</span></div><div class="val" id="expSimB">-</div></div>
+          <div class="kv"><div class="key">Sim: ผันผวน <span class="expert-winrate" id="perfSimC">--%</span></div><div class="val" id="expSimC">-</div></div>
+          <div class="kv"><div class="key">นักขุด (Miner) <span class="expert-winrate" id="perfMiner">--%</span></div><div class="val" id="expMiner">-</div></div>
+          
+          <div class="kv" style="border-top:1px solid var(--card-border);margin-top:6px;padding-top:10px">
+            <div class="key" style="font-weight:bold;color:var(--text)">🔥 มติสุดท้าย (Hunter)</div>
+            <div class="val" id="expFinal" style="font-size:16px;font-weight:bold">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>🛰️ สถานะระบบ</h2>
+        <div class="kv-list">
+          <div class="kv"><div class="key">ชีพจร "สมอง AI"</div><div class="val err" id="statusHeartbeat">ตัดการเชื่อมต่อ</div></div>
+          <div class="kv"><div class="key">ความจุ "สมอง" (DB)</div><div class="val" id="statusStorage">คำนวณ...</div></div>
+          <div class="kv"><div class="key">ประวัติ (รวม)</div><div class="val" id="statusTotalHands">0 ตา</div></div>
+          <div class="kv"><div class="key">ประวัติ (ขอนนี้)</div><div class="val" id="statusShoeHands">0 ตา</div></div>
+        </div>
+      </div>
+      
+      <div class="panel">
+        <h2>🗂️ สรุปประวัติขอนไพ่</h2>
+        <div id="shoeHistorySummary" style="max-height: 150px; overflow-y: auto; font-size: 13px; color: var(--text-muted);">
+          กำลังโหลด...
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>🕹️ ควบคุมด่วน</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:8px" id="quickControls">
+          <button class="btn-small" onclick="onUndo()">UNDO (ยกเลิกตาเดียว)</button>
+          <button class="btn-small" onclick="onNewShoe()">เริ่มขอนไพ่ใหม่</button>
+          <button class="btn-small" onclick="onEditHistory()">แก้ไขประวัติ</button>
+          <button class="btn-small" onclick="onDeleteShoe()" style="background:var(--error);color:var(--text)">🗑️ ลบขอนนี้</button>
+        </div>
+      </div>
+    </div> </div>
+</div>
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>⚙️ ตั้งค่าและข้อมูล</h2>
+      <div class="modal-close" onclick="closeModal('settingsModal')">&times;</div>
+    </div>
+    
+    <h3>การควบคุม AI</h3>
+    <div class="kv" style="margin-bottom:10px">
+      <div class="key" style="font-size:14px">ความมั่นใจ (Trigger)</div>
+      <div class="val" id="settingsRiskLabel">Balanced (5/9)</div>
+    </div>
+    <input type="range" min="1" max="9" value="5" class="slider" id="settingsRiskSlider" style="width:100%">
+    <div style="font-size:12px;color:var(--text-muted;margin-top:4px">ปรับ "เสียงโหวต" ขั้นต่ำที่ AI (Hunter) ต้องมี ก่อนส่ง Signal (สูง = รอนานขึ้น แต่ชัวร์ขึ้น)</div>
+    <div class="slider-controls">
+        <button class="btn-small" onclick="onSetTriggerDefault()">ค่าเริ่มต้น</button>
+        <button class="btn-small" onclick="onCancelTrigger()">ยกเลิก</button>
+        <button class="btn-small" onclick="onSaveTrigger()" style="background:var(--green);color:var(--text)">💾 บันทึก</button>
+    </div>
+    
+    <h3 style="margin-top:20px">การแสดงผล (Performance)</h3>
+    <div class="kv-list">
+        <div class="kv">
+            <div class="key">โหมดประหยัดพลังงาน<br><span style="font-size:11px; color:var(--text-dark)">(ปิดเอฟเฟกต์ทั้งหมด)</span></div>
+            <input type="checkbox" id="togglePowerMode" onchange="onTogglePowerMode(this.checked)">
+        </div>
+        <div class="kv">
+            <div class="key">ปิดการสั่นตอบสนอง</div>
+            <input type="checkbox" id="toggleHaptics" onchange="onToggleHaptics(this.checked)">
+        </div>
+    </div>
+
+    <h3 style="margin-top:20px">การจัดการ "สมอง" (Backup)</h3>
+    <p style="font-size:13px;color:var(--text-muted);line-height:1.5">
+      "สมอง" (IndexedDB) ถูกเก็บในเครื่องคุณ แต่ถ้าล้าง Chrome มันจะหาย! <br>
+      ให้กด **Export** บ่อยๆ เพื่อสำรอง "ประวัติ" (หนังสือเรียน) ไว้
+      หากข้อมูลหาย ให้ใช้ **Import** เพื่อ "ฝึกสมองใหม่"
+    </p>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px">
+      <button class="btn-small" onclick="onExportCSV()">💾 Export ประวัติ (CSV)</button>
+      <button class="btn-small" onclick="onImportCSV()">⤴️ Import ประวัติ (CSV)</button>
+      <button class="btn-small" onclick="onRetrain()" style="background:var(--warn);color:#000">🔁 ฝึกสมองใหม่ (จาก Import)</button>
+    </div>
+    <textarea id="csvPasteArea" rows="4" style="width:100%;margin-top:10px;background:#050505;color:#fff;padding:8px;border-radius:6px" placeholder="หรือ 'วาง' ข้อมูล CSV ที่คัดลอกมาที่นี่..."></textarea>
+    
+    <h3 style="margin-top:20px">โซนอันตราย (บำรุงรักษา)</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px">
+        <button class="btn-small" onclick="onRunBIST()" style="background:var(--warn);color:#000">🩺 ตรวจสุขภาพสมอง (BIST)</button>
+        <button class="btn-small" onclick="onClearMemory()" style="background:var(--red);color:var(--text)">🔥 ล้าง "สมอง" (IndexedDB)</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="helpModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>❓ ช่วยเหลือ</h2>
+      <div class="modal-close" onclick="closeModal('helpModal')">&times;</div>
+    </div>
+    <div class="tooltip-content">
+      <p>ยินดีต้อนรับสู่ OC Baccarat AI (God-Tier)!</p>
+      <p><strong>การป้อนข้อมูล (Smart Interface)</strong><br>
+         - <strong>แตะ (Tap):</strong> ป้อนข้อมูลแบบเร็ว (`PLAYER` หรือ `BANKER`) AI จะถือว่าเป็น `_UNKNOWN` (ไม่รู้จำนวนไพ่)<br>
+         - <strong>แตะค้าง (Hold):</strong> เปิดเมนูย่อย เพื่อป้อนข้อมูลแบบละเอียด (`2 ใบ` หรือ `3 ใบ`)
+      </p>
+      <p><strong>Signal คืออะไร? (ระบบ Hunter)</strong><br>
+         AI จะแสดง `"-"` (รอ) เป็นส่วนใหญ่ และจะส่ง Signal (P/B) เฉพาะในตาที่ "มั่นใจ" สูงเท่านั้น (เข้าเงื่อนไข Trigger)</p>
+      <p><strong>Big Road (ทึบ vs โปร่ง)</strong><br>
+         - <strong>วงกลมทึบ (P/B):</strong> ชนะด้วยไพ่ 2 ใบ (P2 / B2)<br>
+         - <strong>วงกลมโปร่ง (P/B):</strong> ชนะด้วยไพ่ 3 ใบ (P3 / B3)<br>
+         - <strong>วงกลมครึ่งๆ (จาง):</strong> ผลลัพธ์ที่ "ไม่ระบุ" (`_UNKNOWN`)
+      </p>
+      <p><strong>TIE (เส้นเฉียง)</strong><br>
+         ผลเสมอ `T` จะถูกแสดงเป็น "เส้นสีเขียวเฉียง" ทับผลลัพธ์ P/B ก่อนหน้า (เหมือนในคาสิโนจริง)
+      </p>
+      <p><strong>Backup (สำคัญมาก!)</strong><br>
+         "สมอง" AI (IndexedDB) เก็บในเครื่องคุณ ถ้าล้าง Chrome มันจะหาย! กด <strong>⚙️ (ตั้งค่า) > Export CSV</strong> บ่อยๆ เพื่อสำรอง "ประวัติ" (หนังสือเรียน) ไว้ ถ้าหาย ให้กด Import CSV และ "ฝึกสมองใหม่"
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="historyModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>✏️ แก้ไขประวัติ (History Editor)</h2>
+      <div class="modal-close" onclick="closeModal('historyModal')">&times;</div>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted;line-height:1.5">
+      ใช้สำหรับ "ผ่าตัด" ข้อมูลขยะ (ที่กดพลาด) ออกจากสมอง AI
+    </p>
+    <div style="margin-top:16px; margin-bottom:10px;">
+        <label for="historyFilter">กรองข้อมูล:</label>
+        <select id="historyFilter">
+            <option value="all">แสดง 100 ตาล่าสุด</option>
+            <option value="unknown">เฉพาะที่ 'ไม่ระบุ' (Back-fill Mode)</option>
+        </select>
+    </div>
+    <div style="max-height:400px;overflow-y:auto;border:1px solid var(--card-border);border-radius:8px">
+      <table id="historyEditorTable">
+        <thead>
+          <tr>
+            <th>ตาที่</th>
+            <th>ผลลัพธ์</th>
+            <th>แก้ไขเป็น...</th>
+          </tr>
+        </thead>
+        <tbody id="historyEditorBody">
+          </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-content">
+    <h2 id="confirmModalTitle">ยืนยันการกระทำ</h2>
+    <p id="confirmModalBody">คุณแน่ใจหรือไม่?</p>
+    <div id="confirmModalButtons">
+        <button class="btn-small" id="confirmBtnNo" style="flex:1">🟢 ไม่ใช่</button>
+        <button class="btn-small" id="confirmBtnYes" style="flex:1; background:var(--error); color:var(--text)">🔴 ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="status-overlay" id="fatalErrorOverlay">
+  <h1>ข้อผิดพลาดร้ายแรง</h1>
+  <p id="fatalErrorMessage">"สมอง AI" (Web Worker) หยุดทำงาน ระบบไม่สามารถประมวลผลต่อได้<br><br>กรุณา "ปิด" และ "เปิด" แอปนี้ใหม่ทั้งหมด (Restart)</p>
+</div>
+
+<div class="status-overlay" id="retrainOverlay">
+  <h1>กำลังฝึกสมองใหม่</h1>
+  <p>กำลังอ่านประวัติ (CSV) และสร้าง "สมอง" (IndexedDB) ขึ้นมาใหม่...<br>กรุณาอย่าปิดหน้านี้</p>
+  <div id="retrainProgress">
+    <div id="retrainProgressBar"></div>
+  </div>
+  <p style="margin-top:10px;font-size:14px" id="retrainStatus">สถานะ: เริ่มต้น...</p>
+</div>
+
+
+<script>
+// ========== PART 2: MAIN THREAD JAVASCRIPT ==========
+// นี่คือ "หน้าจอ" (UI) หรือ "เธรดหลัก"
+// ทำหน้าที่: จัดการ UI, สื่อสารกับ "สมอง" (Web Worker)
+
+// 1. DOM Elements (การเชื่อมต่อหน้าปัด)
+const ui = {
+    loadingOverlay: document.getElementById('loadingOverlay'),
+    app: document.getElementById('app'),
+    
+    appStatus: document.getElementById('appStatus'),
+    predCircle: document.getElementById('predCircle'),
+    confText: document.getElementById('confText'),
+    condBox: document.getElementById('condBox'),
+    progressBar: document.getElementById('progressBar'),
+    countdownText: document.getElementById('countdownText'),
+    controlsGrid: document.getElementById('controlsGrid'),
+    quickControls: document.getElementById('quickControls'),
+    
+    // (Smart Interface 3 ปุ่ม)
+    btnPlayer: document.getElementById('btnPlayer'),
+    btnBanker: document.getElementById('btnBanker'),
+    btnTie: document.getElementById('btnTie'),
+    flyoutP: document.getElementById('flyoutP'),
+    flyoutB: document.getElementById('flyoutB'),
+    
+    winRateShoe: document.getElementById('winRateShoe'),
+    winShoe: document.getElementById('winShoe'),
+    loseShoe: document.getElementById('loseShoe'),
+    winRateGlobal: document.getElementById('winRateGlobal'),
+    winGlobal: document.getElementById('winGlobal'),
+    loseGlobal: document.getElementById('loseGlobal'),
+    
+    bigroad: document.getElementById('bigroad'),
+    
+    aiDashboard: document.getElementById('aiDashboard'),
+    // (9 Experts)
+    expMain: document.getElementById('expMain'),
+    expDerived: document.getElementById('expDerived'),
+    expRules: document.getElementById('expRules'),
+    expStats: document.getElementById('expStats'),
+    expSpecial: document.getElementById('expSpecial'),
+    expSimA: document.getElementById('expSimA'),
+    expSimB: document.getElementById('expSimB'),
+    expSimC: document.getElementById('expSimC'),
+    expMiner: document.getElementById('expMiner'),
+    expFinal: document.getElementById('expFinal'),
+    
+    statusHeartbeat: document.getElementById('statusHeartbeat'),
+    statusStorage: document.getElementById('statusStorage'),
+    statusTotalHands: document.getElementById('statusTotalHands'),
+    statusShoeHands: document.getElementById('statusShoeHands'),
+    shoeHistorySummary: document.getElementById('shoeHistorySummary'),
+    
+    // (Modals)
+    dashboardModal: document.getElementById('dashboardModal'),
+    settingsModal: document.getElementById('settingsModal'),
+    helpModal: document.getElementById('helpModal'),
+    historyModal: document.getElementById('historyModal'),
+    confirmModal: document.getElementById('confirmModal'),
+    confirmModalTitle: document.getElementById('confirmModalTitle'),
+    confirmModalBody: document.getElementById('confirmModalBody'),
+    confirmBtnYes: document.getElementById('confirmBtnYes'),
+    confirmBtnNo: document.getElementById('confirmBtnNo'),
+
+    historyEditorBody: document.getElementById('historyEditorBody'),
+    historyFilter: document.getElementById('historyFilter'),
+    
+    fatalErrorOverlay: document.getElementById('fatalErrorOverlay'),
+    fatalErrorMessage: document.getElementById('fatalErrorMessage'),
+    retrainOverlay: document.getElementById('retrainOverlay'),
+    retrainProgressBar: document.getElementById('retrainProgressBar'),
+    retrainStatus: document.getElementById('retrainStatus'),
+    
+    csvPasteArea: document.getElementById('csvPasteArea'),
+    settingsRiskSlider: document.getElementById('settingsRiskSlider'),
+    settingsRiskLabel: document.getElementById('settingsRiskLabel'),
+    
+    advancedPanels: document.getElementById('advancedPanels'),
+    
+    // (Power Management)
+    togglePowerMode: document.getElementById('togglePowerMode'),
+    toggleHaptics: document.getElementById('toggleHaptics'),
+};
+
+// 2. State (สถานะของหน้าจอ)
+let aiWorker = null;
+let countdownInterval = null;
+let currentCountdown = 20;
+const COUNTDOWN_START = 20;
+let holdTimer = null;
+let isHolding = false;
+const HOLD_DURATION = 400; // (0.4 วินาที)
+// (State การตั้งค่า)
+let currentTriggerValue = 5;
+let appSettings = {
+    powerMode: false,
+    haptics: true
+};
+// (State การยืนยัน)
+let confirmCallback = null;
+
+// 3. Worker Initialization (สตาร์ท "สมอง")
+function initializeWorker() {
+    if (window.Worker) {
+        document.getElementById('loaderStatus').textContent = "สถานะ: กำลังสตาร์ท 'สมอง AI'...";
+        try {
+            aiWorker = new Worker('worker.js'); 
+            aiWorker.onmessage = handleWorkerMessage;
+            aiWorker.onerror = handleWorkerError;
+            
+            const config = {
+                riskThreshold: parseInt(ui.settingsRiskSlider.value, 10)
+            };
+            aiWorker.postMessage({ command: 'INIT', config: config });
+            
+            startHeartbeat();
+        } catch (e) {
+            console.error("Worker failed to start:", e);
+            showFatalError("ไม่สามารถเริ่มต้น 'สมอง AI' (worker.js) ได้ กรุณาตรวจสอบว่าไฟล์อยู่ในโฟลเดอร์เดียวกัน");
+        }
+    } else {
+        console.error("Web Workers not supported");
+        showFatalError("เบราว์เซอร์ของคุณไม่รองรับ Web Workers ไม่สามารถรัน AI ได้");
+    }
+}
+
+// 4. Worker Communication (การสื่อสารกับ "สมอง")
+
+// A. รับข้อความจาก "สมอง"
+function handleWorkerMessage(e) {
+    const data = e.data;
+    
+    switch (data.command) {
+        case 'INIT_COMPLETE':
+            ui.loadingOverlay.style.display = 'none'; 
+            ui.app.style.display = 'block'; 
+            
+            ui.appStatus.textContent = "สถานะ: พร้อม (เชื่อมต่อ 'สมอง' แล้ว)";
+            ui.statusHeartbeat.textContent = "เชื่อมต่อแล้ว";
+            ui.statusHeartbeat.className = "val ok";
+            aiWorker.postMessage({ command: 'LOAD_LAST_STATE' });
+            break;
+            
+        case 'LAST_STATE_LOADED':
+            updateUI(data.state);
+            break;
+            
+        case 'ANALYSIS_COMPLETE':
+            updateUI(data.state);
+            break;
+            
+        case 'HEARTBEAT_PONG':
+            ui.statusHeartbeat.textContent = "เชื่อมต่อแล้ว";
+            ui.statusHeartbeat.className = "val ok";
+            break;
+            
+        case 'STORAGE_UPDATED':
+            ui.statusStorage.textContent = `${(data.sizeMB || 0).toFixed(2)} MB`;
+            ui.statusTotalHands.textContent = `${data.totalHands || 0} ตา`;
+            break;
+            
+        case 'HISTORY_LOADED':
+            renderHistoryEditor(data.history, data.filter);
+            break;
+            
+        case 'SHOE_SUMMARY_LOADED':
+            renderShoeSummary(data.summary);
+            break;
+            
+        case 'BIST_RESULT':
+            alert(`[ผลการตรวจสุขภาพสมอง]\nความสมบูรณ์: ${data.passed ? 'ปกติ (100%)' : 'พบปัญหา!'}\n\n${data.message}`);
+            break;
+            
+        case 'RETRAIN_PROGRESS':
+            ui.retrainOverlay.style.display = 'flex';
+            ui.retrainProgressBar.style.width = `${data.progress}%`;
+            ui.retrainStatus.textContent = `สถานะ: ${data.message}`;
+            break;
+            
+        case 'RETRAIN_COMPLETE':
+            ui.retrainOverlay.style.display = 'none';
+            alert('การฝึกสมองใหม่เสร็จสิ้น! ระบบพร้อมใช้งาน');
+            aiWorker.postMessage({ command: 'LOAD_LAST_STATE' });
+            break;
+
+        case 'EXPORT_DATA':
+            downloadCSV(data.csvString, 'oc_history_backup.csv');
+            break;
+            
+        case 'ACTION_FAILED':
+            alert(`เกิดข้อผิดพลาด: ${data.message}`);
+            setControlsDisabled(false);
+            break;
+            
+        case 'FATAL_ERROR_FROM_WORKER':
+            showFatalError(data.message);
+            break;
+    }
+}
+
+// B. จัดการเมื่อ "สมอง" พัง
+function handleWorkerError(e) {
+    console.error("Fatal Worker Error:", e.message, e.filename, e.lineno);
+    showFatalError(`'สมอง AI' หยุดทำงานกะทันหัน (บรรทัด ${e.lineno}: ${e.message})`);
+}
+
+// C. แสดงข้อผิดพลาดร้ายแรง (Heartbeat Fail)
+function showFatalError(message) {
+    ui.loadingOverlay.style.display = 'none';
+    ui.app.style.display = 'none';
+    
+    stopHeartbeat();
+    ui.fatalErrorMessage.innerHTML = message + "<br><br>กรุณา 'ปิด' และ 'เปิด' แอปนี้ใหม่ทั้งหมด (Restart)";
+    ui.fatalErrorOverlay.style.display = 'flex';
+    if (aiWorker) {
+        aiWorker.terminate();
+        aiWorker = null;
+    }
+}
+
+// 5. Heartbeat (ระบบตรวจจับชีพจร)
+let heartbeatInterval = null;
+function startHeartbeat() {
+    stopHeartbeat();
+    heartbeatInterval = setInterval(() => {
+        if (!aiWorker) {
+            stopHeartbeat();
+            return;
+        }
+        try {
+            ui.statusHeartbeat.textContent = "กำลังตรวจสอบ...";
+            ui.statusHeartbeat.className = "val warn";
+            aiWorker.postMessage({ command: 'HEARTBEAT_PING' });
+            
+            setTimeout(() => {
+                if (ui.statusHeartbeat.textContent === "กำลังตรวจสอบ...") {
+                    showFatalError("'สมอง AI' (Web Worker) ไม่ตอบสนอง ระบบหยุดทำงาน");
+                }
+            }, 3000); 
+
+        } catch (e) {
+            showFatalError(`ไม่สามารถสื่อสารกับ 'สมอง AI' ได้ (อาจจะแครช)`);
+        }
+    }, 10000); 
+}
+function stopHeartbeat() {
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+    }
+}
+
+// 6. UI Update Functions (ฟังก์ชันอัปเดตหน้าจอ)
+
+// A. อัปเดตหน้าจอทั้งหมด
+function updateUI(state) {
+    if (!state) {
+        setControlsDisabled(false);
+        return;
+    }
+    
+    // 1. อัปเดต Signal หลัก (ระบบ Hunter)
+    const pred = state.signal.finalPrediction || '-';
+    ui.predCircle.textContent = pred;
+    
+    // (แก้แผล "AI ตาย") - "ชีพจร"
+    if (pred === '-' && !appSettings.powerMode) {
+        ui.predCircle.className = 'pred-circle waiting';
+        ui.condBox.textContent = `กำลังวิเคราะห์... (รอเงื่อนไข ${state.signal.condition})`;
+    } else {
+        ui.predCircle.className = `pred-circle ${pred}`;
+        ui.condBox.textContent = `เงื่อนไข: ${state.signal.condition || 'กำลังรอผล...'}`;
+    }
+    
+    ui.confText.textContent = `ความมั่นใจ: ${state.signal.confidence || 0}%`;
+    
+    // 2. อัปเดต Winrate
+    ui.winRateShoe.textContent = `${state.stats.shoe.winrate || 0} %`;
+    ui.winShoe.textContent = state.stats.shoe.wins || 0;
+    ui.loseShoe.textContent = state.stats.shoe.losses || 0;
+    ui.winRateGlobal.textContent = `${state.stats.global.winrate || 0} %`;
+    ui.winGlobal.textContent = state.stats.global.wins || 0;
+    ui.loseGlobal.textContent = state.stats.global.losses || 0;
+    
+    // 3. อัปเดต แดชบอร์ด AI (Shadow Mode)
+    updateExpertDashboard(state.signal.expertVotes || {}, state.expertPerformance || {});
+    
+    // 4. อัปเดต สถานะระบบ
+    ui.statusStorage.textContent = `${(state.stats.storageSizeMB || 0).toFixed(2)} MB`;
+    ui.statusTotalHands.textContent = `${state.stats.global.totalHands || 0} ตา`;
+    ui.statusShoeHands.textContent = `${state.stats.shoe.totalHands || 0} ตา`;
+
+    // 5. อัปเดต Big Road
+    renderBigRoad(state.history.shoe);
+    
+    // 6. (สำคัญ) ปลดล็อคปุ่มกด (แก้แผล "คลิกรัว")
+    setControlsDisabled(false);
+}
+
+// B. อัปเดตแดชบอร์ด AI (Shadow Mode)
+function updateExpertDashboard(votes, performance) {
+    const setVote = (el, vote) => {
+        if (!vote || vote === 'WAIT') {
+            el.textContent = '-';
+            el.className = 'val';
+        } else {
+            el.textContent = vote;
+            el.className = `val ${vote}`;
+        }
+    };
+    const setPerf = (key) => {
+        const perf = performance[key];
+        const el = document.getElementById(`perf${key.charAt(0).toUpperCase() + key.slice(1)}`);
+        if (!el) return;
+        
+        if (perf && perf.total > 0) {
+            const winrate = Math.round((perf.wins / perf.total) * 100);
+            el.textContent = `${winrate}%`;
+        } else {
+            el.textContent = `--%`;
+        }
+    };
+    
+    setVote(ui.expMain, votes.main); setPerf('main');
+    setVote(ui.expDerived, votes.derived); setPerf('derived');
+    setVote(ui.expRules, votes.rules); setPerf('rules');
+    setVote(ui.expStats, votes.stats); setPerf('stats');
+    setVote(ui.expSpecial, votes.special); setPerf('special');
+    setVote(ui.expSimA, votes.simA); setPerf('simA');
+    setVote(ui.expSimB, votes.simB); setPerf('simB');
+    setVote(ui.expSimC, votes.simC); setPerf('simC');
+    setVote(ui.expMiner, votes.miner); setPerf('miner');
+    
+    setVote(ui.expFinal, votes.finalPrediction);
+}
+
+// C. อัปเดต Big Road
+function renderBigRoad(history) {
+    ui.bigroad.innerHTML = '';
+    if (!history || history.length === 0) return;
+    
+    const cols = [];
+    let tieCount = 0; // (ตัวนับ TIE)
+    
+    history.forEach(hand => {
+        const result = hand.result;
+        const mainResult = result[0];
+        
+        if (mainResult === 'T') {
+            tieCount++; // (จำ TIE ไว้)
+            return; // (ไม่สร้างเซลล์ใหม่)
+        }
+        
+        let handData = { hand: hand, ties: tieCount };
+        tieCount = 0; // (รีเซ็ตตัวนับ TIE)
+        
+        if (cols.length === 0) {
+            cols.push([handData]);
+            return;
+        }
+        
+        let lastCol = cols[cols.length - 1];
+        let lastHandData = lastCol[lastCol.length - 1];
+        let lastMainResult = lastHandData.hand.result[0];
+        
+        if (mainResult === lastMainResult) {
+            lastCol.push(handData);
+        } else {
+            cols.push([handData]); 
+        }
+    });
+    
+    cols.forEach(col => {
+        const divCol = document.createElement('div');
+        divCol.className = 'br-col';
+        col.forEach(handData => {
+            const cell = document.createElement('div');
+            const hand = handData.hand;
+            // (แก้แผล "TIE Line")
+            const cellClass = 'br-' + (hand.result === 'T' ? 'T' : hand.result.replace('2', ''));
+            cell.className = `br-cell ${cellClass}`;
+            cell.textContent = hand.result[0];
+            
+            // (ถ้ามี TIE ให้วาดเส้น)
+            if (handData.ties > 0) {
+                const tieLine = document.createElement('div');
+                tieLine.className = 'tie-line';
+                cell.appendChild(tieLine);
+                // (ถ้ามี TIE มากกว่า 1 ให้ใส่ตัวเลข)
+                if (handData.ties > 1) {
+                    tieLine.textContent = handData.ties;
+                    tieLine.style.color = 'white';
+                    tieLine.style.fontSize = '12px';
+                    tieLine.style.textAlign = 'center';
+                }
+            }
+            
+            divCol.appendChild(cell);
+        });
+        ui.bigroad.appendChild(divCol);
+    });
+    
+    ui.bigroad.scrollLeft = ui.bigroad.scrollWidth;
+}
+
+// D. อัปเดตหน้าต่างแก้ไขประวัติ
+function renderHistoryEditor(history, filter) {
+    ui.historyEditorBody.innerHTML = '';
+    if (!history || history.length === 0) {
+        ui.historyEditorBody.innerHTML = '<tr><td colspan="3">ยังไม่มีประวัติ</td></tr>';
+        return;
+    }
+    
+    let filteredHistory = history;
+    if (filter === 'unknown') {
+        filteredHistory = history.filter(h => h.result.includes('_UNKNOWN'));
+    }
+    
+    const recentHistory = filteredHistory.slice(-100).reverse();
+    
+    recentHistory.forEach(hand => {
+        const row = document.createElement('tr');
+        const cellId = document.createElement('td');
+        cellId.textContent = `ตาที่ ${hand.id}`;
+        row.appendChild(cellId);
+        
+        const cellResult = document.createElement('td');
+        cellResult.textContent = hand.result;
+        row.appendChild(cellResult);
+        
+        const cellAction = document.createElement('td');
+        const select = document.createElement('select');
+        select.innerHTML = `<option value="">-- เลือกใหม่ --</option>
+                          <option value="P_UNKNOWN">PLAYER (ไม่ระบุ)</option>
+                          <option value="P2">PLAYER 2 ใบ</option>
+                          <option value="P3">PLAYER 3 ใบ</option>
+                          <option value="B_UNKNOWN">BANKER (ไม่ระบุ)</option>
+                          <option value="B2">BANKER 2 ใบ</option>
+                          <option value="B3">BANKER 3 ใบ</option>
+                          <option value="T">TIE</option>`;
+        select.onchange = () => {
+            const newValue = select.value;
+            if (newValue) {
+                showConfirm(
+                    `ยืนยันการแก้ไข`,
+                    `คุณต้องการแก้ไข ตาที่ ${hand.id} จาก ${hand.result} เป็น ${newValue} หรือไม่?`,
+                    () => {
+                        setControlsDisabled(true);
+                        ui.predCircle.textContent = '...';
+                        ui.condBox.textContent = "กำลังแก้ไข...";
+                        
+                        aiWorker.postMessage({ command: 'EDIT_HISTORY', handId: hand.id, newResult: newValue });
+                        closeModal('historyModal');
+                    }
+                );
+            }
+        };
+        cellAction.appendChild(select);
+        row.appendChild(cellAction);
+        
+        ui.historyEditorBody.appendChild(row);
+    });
+}
+
+// (‼️‼️ เพิ่ม: "สรุปประวัติขอนไพ่" ‼️‼️)
+function renderShoeSummary(summary) {
+    if (!summary || summary.length === 0) {
+        ui.shoeHistorySummary.innerHTML = 'ยังไม่มีประวัติขอนไพ่';
+        return;
+    }
+    ui.shoeHistorySummary.innerHTML = '';
+    summary.reverse().forEach(shoe => {
+        const div = document.createElement('div');
+        div.style.borderBottom = `1px solid var(--card-border)`;
+        div.style.padding = `8px 4px`;
+        div.innerHTML = `<strong>ขอนไพ่ #${shoe.id}</strong> (${shoe.isCurrent ? 'ปัจจุบัน' : 'จบแล้ว'})<br>
+                         P: ${shoe.P} | B: ${shoe.B} | T: ${shoe.T} (รวม ${shoe.totalHands} ตา)`;
+        ui.shoeHistorySummary.appendChild(div);
+    });
+}
+
+
+// 7. Countdown Timer (ตัวนับเวลา)
+function startCountdown() {
+    stopCountdown();
+    currentCountdown = COUNTDOWN_START;
+    ui.countdownText.textContent = `${currentCountdown}s`;
+    
+    countdownInterval = setInterval(() => {
+        currentCountdown--;
+        ui.countdownText.textContent = `${currentCountdown}s`;
+        if (currentCountdown <= 5) {
+            ui.countdownText.style.color = 'var(--error)';
+        } else if (currentCountdown <= 10) {
+            ui.countdownText.style.color = 'var(--warn)';
+        }
+        
+        if (currentCountdown <= 0) {
+            stopCountdown();
+            ui.countdownText.textContent = 'หมดเวลา';
+        }
+    }, 1000);
+}
+function stopCountdown() {
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+    }
+    ui.countdownText.style.color = 'var(--warn)';
+}
+function resetCountdown() {
+    stopCountdown();
+    startCountdown();
+}
+
+
+// 8. User Actions (การกระทำของผู้ใช้)
+
+// (Haptic Feedback)
+function haptic(type = 'light') {
+    if (appSettings.haptics && window.navigator.vibrate) {
+        if (type === 'light') window.navigator.vibrate(50); // (แตะ)
+        if (type === 'medium') window.navigator.vibrate(100); // (แตะค้าง)
+        if (type === 'heavy') window.navigator.vibrate([100, 50, 100]); // (Signal มา)
+    }
+}
+
+// (ล็อค/ปลดล็อค ปุ่มกด)
+function setControlsDisabled(disabled) {
+    ui.btnPlayer.disabled = disabled;
+    ui.btnBanker.disabled = disabled;
+    ui.btnTie.disabled = disabled;
+    ui.btnPlayer.style.opacity = disabled ? 0.5 : 1;
+    ui.btnBanker.style.opacity = disabled ? 0.5 : 1;
+    ui.btnTie.style.opacity = disabled ? 0.5 : 1;
+    
+    const quickControls = ui.quickControls.getElementsByTagName('button');
+    for (const button of quickControls) {
+        button.disabled = disabled;
+        button.style.opacity = disabled ? 0.5 : 1;
+    }
+}
+
+
+// (Smart Interface 'แตะ / แตะค้าง')
+function setupSmartControls() {
+    const attachListeners = (button, lazyResult, flyout) => {
+        button.addEventListener('touchstart', (e) => {
+            if (button.disabled) return;
+            e.preventDefault(); 
+            isHolding = false;
+            holdTimer = setTimeout(() => {
+                isHolding = true;
+                haptic('medium');
+                flyout.style.display = 'block';
+            }, HOLD_DURATION);
+        }, { passive: false });
+        
+        button.addEventListener('touchend', (e) => {
+            if (button.disabled) return;
+            e.preventDefault();
+            clearTimeout(holdTimer);
+            if (!isHolding) {
+                haptic('light');
+                onResult(lazyResult); 
+            }
+        });
+        
+        // (Desktop)
+         button.addEventListener('mousedown', (e) => {
+            if (button.disabled) return;
+            if (e.button === 2) { 
+                 e.preventDefault();
+                 flyout.style.display = 'block';
+            }
+         });
+         button.addEventListener('click', (e) => {
+             if (button.disabled) return;
+             haptic('light');
+             onResult(lazyResult);
+         });
+         document.addEventListener('click', (e) => {
+            if (flyout && !flyout.contains(e.target) && !button.contains(e.target)) {
+                flyout.style.display = 'none';
+            }
+         });
+    };
+    
+    attachListeners(ui.btnPlayer, 'P_UNKNOWN', ui.flyoutP);
+    attachListeners(ui.btnBanker, 'B_UNKNOWN', ui.flyoutB);
+    
+    ui.btnTie.addEventListener('click', () => onResult('T'));
+}
+
+
+// A. กดปุ่มผลลัพธ์ (ฟังก์ชันกลาง)
+window.onResult = function(result) { 
+    if (!aiWorker) return alert('ข้อผิดพลาด: "สมอง AI" ยังไม่พร้อม');
+    
+    ui.flyoutP.style.display = 'none';
+    ui.flyoutB.style.display = 'none';
+    
+    resetCountdown();
+    setControlsDisabled(true);
+    
+    ui.predCircle.textContent = '...';
+    ui.predCircle.className = 'pred-circle';
+    ui.condBox.textContent = "กำลังวิเคราะห์...";
+    
+    aiWorker.postMessage({ command: 'ADD_HAND', result: result });
+}
+
+// (‼️‼️ เพิ่ม: "หน้าต่างยืนยัน 'กันพลาด'" ‼️‼️)
+function showConfirm(title, body, callback) {
+    ui.confirmModalTitle.textContent = title;
+    ui.confirmModalBody.textContent = body;
+    
+    ui.confirmBtnYes.onclick = () => {
+        closeModal('confirmModal');
+        if (callback) callback();
+    };
+    ui.confirmBtnNo.onclick = () => {
+        closeModal('confirmModal');
+    };
+    
+    openModal('confirmModal');
+}
+
+// B. กด Undo
+window.onUndo = function() {
+    if (!aiWorker) return;
+    showConfirm(
+        'ยืนยันการ UNDO',
+        'คุณต้องการยกเลิก "ตาที่แล้ว" จริงหรือไม่?',
+        () => {
+            setControlsDisabled(true);
+            ui.predCircle.textContent = '...';
+            ui.condBox.textContent = "กำลังย้อนกลับ...";
+            aiWorker.postMessage({ command: 'UNDO_LAST_HAND' });
+        }
+    );
+}
+
+// C. กด เริ่มขอนไพ่ใหม่
+window.onNewShoe = function() {
+    if (!aiWorker) return;
+    showConfirm(
+        'ยืนยันการเริ่มขอนไพ่ใหม่',
+        'สถิติ Winrate (ขอนนี้) จะถูกรีเซ็ต คุณแน่ใจหรือไม่?',
+        () => {
+            setControlsDisabled(true);
+            ui.predCircle.textContent = '...';
+            ui.condBox.textContent = "กำลังเริ่มขอนใหม่...";
+            
+            // (Optimistic Update)
+            ui.winRateShoe.textContent = `- %`;
+            ui.winShoe.textContent = 0;
+            ui.loseShoe.textContent = 0;
+            ui.statusShoeHands.textContent = `0 ตา`;
+            renderBigRoad([]);
+            
+            aiWorker.postMessage({ command: 'NEW_SHOE' });
+            resetCountdown();
+        }
+    );
+}
+
+// (‼️‼️ เพิ่ม: "ลบขอนนี้" ‼️‼️)
+window.onDeleteShoe = function() {
+    if (!aiWorker) return;
+    showConfirm(
+        'อันตราย! ยืนยันการลบขอนไพ่',
+        'คุณต้องการ "ลบ" ข้อมูลทั้งหมดของ "ขอนไพ่ปัจจุบัน" ทิ้งถาวรหรือไม่? (ระบบจะย้อนกลับไปขอนที่แล้ว)',
+        () => {
+            setControlsDisabled(true);
+            ui.predCircle.textContent = '...';
+            ui.condBox.textContent = "กำลังลบขอนไพ่...";
+            aiWorker.postMessage({ command: 'DELETE_CURRENT_SHOE' });
+        }
+    );
+}
+
+
+// D. กด แก้ไขประวัติ
+window.onEditHistory = function() {
+    if (!aiWorker) return;
+    ui.historyFilter.value = 'all';
+    aiWorker.postMessage({ command: 'GET_HISTORY', filter: 'all' });
+    openModal('historyModal');
+}
+ui.historyFilter.onchange = () => {
+     aiWorker.postMessage({ command: 'GET_HISTORY', filter: ui.historyFilter.value });
+};
+
+
+// E. ตั้งค่า AI Risk (‼️‼️ "ผ่าตัด" ‼️‼️)
+ui.settingsRiskSlider.oninput = function() {
+    ui.settingsRiskLabel.textContent = `(${this.value}/9 เสียง)`;
+};
+window.onSaveTrigger = function() {
+    const newValue = parseInt(ui.settingsRiskSlider.value, 10);
+    currentTriggerValue = newValue; // (บันทึกค่าใหม่)
+    aiWorker.postMessage({ command: 'UPDATE_CONFIG', config: { riskThreshold: newValue } });
+    alert(`บันทึกค่าความมั่นใจเป็น ${newValue}/9 เรียบร้อยแล้ว`);
+    closeModal('settingsModal');
+}
+window.onCancelTrigger = function() {
+    ui.settingsRiskSlider.value = currentTriggerValue; // (เด้งกลับค่าเดิม)
+    ui.settingsRiskLabel.textContent = `(${currentTriggerValue}/9 เสียง)`;
+    closeModal('settingsModal');
+}
+window.onSetTriggerDefault = function() {
+    const defaultValue = 5;
+    ui.settingsRiskSlider.value = defaultValue;
+    ui.settingsRiskLabel.textContent = `(${defaultValue}/9 เสียง)`;
+    // (ยังไม่เซฟ จนกว่าจะกด บันทึก)
+}
+
+
+// F. การ Backup (Export/Import)
+window.onExportCSV = function() {
+    if (!aiWorker) return;
+    showConfirm('ยืนยันการ Export', 'คุณต้องการ Export ประวัติทั้งหมด (หนังสือเรียน) เป็นไฟล์ CSV หรือไม่?', () => {
+        ui.appStatus.textContent = "สถานะ: กำลังสร้างไฟล์ CSV...";
+        aiWorker.postMessage({ command: 'EXPORT_CSV' });
+    });
+}
+window.onImportCSV = function() { /* (โค้ดเดิม) */ }
+window.onRetrain = function() { /* (โค้ดเดิม) */ }
+function confirmImport(csvString) { /* (โค้ดเดิม) */ }
+function downloadCSV(csvString, filename) { /* (โค้ดเดิม) */ }
+// (Copy โค้ดที่ลบไปกลับมา)
+window.onImportCSV = function() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv';
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const csvString = event.target.result;
+            confirmImport(csvString);
+        };
+        reader.readAsText(file);
+    };
+    fileInput.click();
+}
+window.onRetrain = function() {
+    const csvString = ui.csvPasteArea.value;
+    if (!csvString || csvString.trim().length < 10) {
+        return alert('กรุณา "วาง" ข้อมูล CSV ลงในช่องข้อความก่อน\n(หรือใช้ปุ่ม Import CSV)');
+    }
+    confirmImport(csvString);
+}
+function confirmImport(csvString) {
+    showConfirm(
+        'คำเตือน! ฝึกสมองใหม่!',
+        'การกระทำนี้จะ "ลบ" สมอง AI ทั้งหมด แล้ว "ฝึกใหม่" จากข้อมูลที่ Import... คุณแน่ใจหรือไม่?',
+        () => {
+            if (!aiWorker) return alert('ข้อผิดพลาด: "สมอง AI" ยังไม่พร้อม');
+            ui.retrainOverlay.style.display = 'flex';
+            ui.retrainProgressBar.style.width = '0%';
+            ui.retrainStatus.textContent = "สถานะ: เริ่มต้น... (กำลังส่งข้อมูล)";
+            aiWorker.postMessage({ command: 'RETRAIN_FROM_CSV', csvString: csvString });
+            closeModal('settingsModal');
+            ui.csvPasteArea.value = '';
+        }
+    );
+}
+function downloadCSV(csvString, filename) {
+    ui.appStatus.textContent = "สถานะ: พร้อม";
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    alert('Export CSV สำเร็จ! ไฟล์ถูกบันทึกในโฟลเดอร์ Downloads ของคุณ');
+}
+
+
+// G. โซนอันตราย
+window.onClearMemory = function() {
+    showConfirm(
+        'อันตราย!!! ยืนยันครั้งที่ 1',
+        'คุณแน่ใจหรือไม่ว่าต้องการ "ล้างสมอง AI" ทั้งหมด? (ไม่สามารถกู้คืนได้ ยกเว้นมี CSV Backup)',
+        () => {
+            showConfirm(
+                'ยืนยันครั้งสุดท้าย!',
+                'ลบสมอง AI ทั้งหมดจริงๆ หรือไม่?',
+                () => {
+                    if (!aiWorker) return alert('ข้อผิดพลาด: "สมอง AI" ยังไม่พร้อม');
+                    aiWorker.postMessage({ command: 'CLEAR_ALL_MEMORY' });
+                    alert('ลบสมอง AI ทั้งหมดเรียบร้อยแล้ว');
+                    location.reload();
+                }
+            );
+        }
+    );
+}
+// (BIST)
+window.onRunBIST = function() {
+    if (!aiWorker) return;
+    showConfirm('ตรวจสุขภาพสมอง', 'คุณต้องการสแกนหาข้อมูลขยะ หรือข้อมูลที่ผิดพลาดใน IndexedDB หรือไม่?', () => {
+        aiWorker.postMessage({ command: 'RUN_BIST' });
+    });
+}
+
+// (‼️‼️ เพิ่ม: Power Management ‼️‼️)
+window.onTogglePowerMode = function(isChecked) {
+    appSettings.powerMode = isChecked;
+    // (Placeholder: ต้องเพิ่มโค้ดปิด/เปิด Dynamic Gloss, Mote BG)
+    alert('โหมดประหยัดพลังงาน: ' + (isChecked ? 'เปิด' : 'ปิด'));
+}
+window.onToggleHaptics = function(isChecked) {
+    appSettings.haptics = !isChecked; // (Checkbox คือ "ปิด")
+}
+
+
+// 9. Modal Controls (การเปิด/ปิดหน้าต่าง)
+window.openModal = function(id) { 
+    if (id === 'dashboardModal') {
+        // (พิเศษ: ให้ Dashboard โหลดข้อมูลสรุปขอนไพ่)
+        aiWorker.postMessage({ command: 'GET_SHOE_SUMMARY' });
+    }
+    document.getElementById(id).style.display = 'block'; 
+}
+window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; }
+
+
+// 10. Start Application (เริ่มแอป!)
+initializeWorker();
+resetCountdown(); 
+setupSmartControls(); // (เริ่มระบบ 'แตะ/แตะค้าง')
+
+</script>
+
+</body>
+</html>
