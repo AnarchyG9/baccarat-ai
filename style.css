@@ -340,12 +340,10 @@ button,input,select,textarea{font-family:inherit}
 /* ========== (‼️‼️ เพิ่ม v14.0: DERIVED ROADS ‼️‼️) ========== */
 .derived-roads-panel {
     display: grid;
-    /* (‼️‼️ อัปเกรด v15.0: แบ่ง 2 คอลัมน์สำหรับมือถือ ‼️‼️) */
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    /* (‼️‼️ อัปเกรด v16.0: แบ่ง 3 คอลัมน์สำหรับมือถือ ‼️‼️) */
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
 }
-
-/* (เราจะเพิ่ม grid-template-columns บนจอใหญ่ในอนาคต) */
 
 .derived-road-wrap {
     background: var(--glass);
@@ -385,13 +383,15 @@ button,input,select,textarea{font-family:inherit}
     border-radius: 999px;
     background: transparent;
     box-sizing: border-box; /* (ป้องกัน border ขยายกล่อง) */
+    position: relative; /* (‼️‼️ v16.0: สำหรับเส้นทับ ‼️‼️) */
+    overflow: hidden; /* (‼️‼️ v16.0: สำหรับเส้นทับ ‼️‼️) */
 }
 
 /* (Big Eye Road: Hollow Circles) */
-.dr-cell.ber-R { /* (‼️‼️ v15.0: เปลี่ยนชื่อเป็น ber-R ‼️‼️) */
+.dr-cell.ber-R { 
     border: 3px solid var(--red);
 }
-.dr-cell.ber-B { /* (‼️‼️ v15.0: เปลี่ยนชื่อเป็น ber-B ‼️‼️) */
+.dr-cell.ber-B { 
     border: 3px solid var(--blue);
 }
 /* ========== (จบส่วน v14.0) ========== */
@@ -414,3 +414,28 @@ button,input,select,textarea{font-family:inherit}
     justify-self: center;
 }
 /* ========== (จบส่วน v15.0) ========== */
+
+
+/* ========== (‼️‼️ เพิ่ม v16.0: COCKROACH ROAD ‼️‼️) ========== */
+/* (Cockroach Road: Slashes) */
+.dr-cell.cr-R::after {
+    content: '';
+    position: absolute;
+    width: 140%;
+    height: 3px;
+    background: var(--red);
+    transform: rotate(45deg);
+    top: 6px;
+    left: -3px;
+}
+.dr-cell.cr-B::after {
+    content: '';
+    position: absolute;
+    width: 140%;
+    height: 3px;
+    background: var(--blue);
+    transform: rotate(45deg);
+    top: 6px;
+    left: -3px;
+}
+/* ========== (จบส่วน v16.0) ========== */
