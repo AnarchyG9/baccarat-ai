@@ -337,7 +337,7 @@ button,input,select,textarea{font-family:inherit}
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* ========== (‼️‼️ เพิ่ม v14.0: DERIVED ROADS ‼️‼️) ========== */
+/* ========== (‼️‼️ อัปเกรด v16.0: DERIVED ROADS ‼️‼️) ========== */
 .derived-roads-panel {
     display: grid;
     /* (‼️‼️ อัปเกรด v16.0: แบ่ง 3 คอลัมน์สำหรับมือถือ ‼️‼️) */
