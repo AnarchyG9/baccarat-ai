@@ -1,8 +1,8 @@
 /* ========== PART 3: AI BRAIN (WEB WORKER) ========== */
 /*
  * นี่คือ "สมอง AI" (God-Tier) ฉบับสมบูรณ์
- * (ฉบับแก้ไข: v15.0 - The Small Road)
- * เพิ่ม: ตรรกะการคำนวณ Small Road
+ * (ฉบับแก้ไข: v16.0 - The Cockroach + 10k Genesis Brain)
+ * เพิ่ม: ตรรกะ Cockroach Road และระบบโหลด Genesis Block 10,000 ตา
  *
  * ทำหน้าที่: คำนวณตรรกะ AI ทั้งหมด, จัดการฐานข้อมูล (IndexedDB)
  * มันทำงานแยกขาดจาก "หน้าจอ" (UI) โดยสิ้นเชิง
@@ -33,7 +33,6 @@ class DerivedRoadsCalculator {
 
             if (mainResult === 'T') {
                 if (currentCol.length > 0) {
-                    // (เพิ่ม TIE เข้าไปในเซลล์ล่าสุด)
                     currentCol[currentCol.length - 1].ties = (currentCol[currentCol.length - 1].ties || 0) + 1;
                 }
                 return;
@@ -87,7 +86,6 @@ class DerivedRoadsCalculator {
         for (let c = startCol; c < this.bigRoadCols.length; c++) {
             for (let r = 0; r < this.bigRoadCols[c].length; r++) {
                 
-                // (ข้ามเซลล์ [1][0] เพราะมันคือจุดอ้างอิงแรก)
                 if (r === 0 && c === startCol) continue; 
 
                 let result;
@@ -110,7 +108,7 @@ class DerivedRoadsCalculator {
         return this._formatToGrid(results);
     }
     
-    // (‼️‼️ เพิ่ม v15.0: คำนวณ Small Road - ตารางไม้ขีด ‼️‼️)
+    // (ขั้นตอนที่ 3: คำนวณ Small Road - ตารางไม้ขีด)
     _calculateSmallRoad() {
         const results = []; 
         const startCol = 2; // (Small Road เริ่มที่คอลัมน์ 2)
@@ -118,7 +116,6 @@ class DerivedRoadsCalculator {
         for (let c = startCol; c < this.bigRoadCols.length; c++) {
             for (let r = 0; r < this.bigRoadCols[c].length; r++) {
                 
-                // (ข้ามเซลล์ [2][0] เพราะมันคือจุดอ้างอิงแรก)
                 if (r === 0 && c === startCol) continue; 
 
                 let result;
@@ -140,8 +137,39 @@ class DerivedRoadsCalculator {
         }
         return this._formatToGrid(results);
     }
+    
+    // (‼️‼️ เพิ่ม v16.0: คำนวณ Cockroach Road - ตารางแมลงสาบ ‼️‼️)
+    _calculateCockroachRoad() {
+        const results = []; 
+        const startCol = 3; // (Cockroach Road เริ่มที่คอลัมน์ 3)
+        
+        for (let c = startCol; c < this.bigRoadCols.length; c++) {
+            for (let r = 0; r < this.bigRoadCols[c].length; r++) {
+                
+                if (r === 0 && c === startCol) continue; 
 
-    // (ขั้นตอนที่ 3: จัดรูปแบบผลลัพธ์ (R, B) ให้อยู่ในตาราง Grid)
+                let result;
+                if (r === 0) {
+                    // (แถวบนสุด: เทียบ [c][0] กับ [c-3][0])
+                    result = this._compare(c, 0, c - 3, 0);
+                } else {
+                    // (แถวอื่น)
+                    if (this._getCell(c, r - 1) !== null) {
+                        // (มังกร: เทียบ [c][r] กับ [c][r-1])
+                        result = this._compare(c, r, c, r - 1);
+                    } else {
+                        // (ไม่ใช่แถวมังกร: เทียบ [c][r] กับ [c-3][r])
+                        result = this._compare(c, r, c - 3, r);
+                    }
+                }
+                results.push({ col: c, row: r, result: result });
+            }
+        }
+        return this._formatToGrid(results);
+    }
+
+
+    // (ขั้นตอนที่ 4: จัดรูปแบบผลลัพธ์ (R, B) ให้อยู่ในตาราง Grid)
     _formatToGrid(results) {
         const cols = [];
         if (!results || results.length === 0) return { cols };
@@ -153,7 +181,7 @@ class DerivedRoadsCalculator {
 
         results.forEach(res => {
             // (ตรวจสอบว่าเซลล์ใน Big Road "ติดกัน" หรือไม่)
-            // (ถ้า "คอลัมน์" ใน Big Road เปลี่ยน หรือ "แถว" ใน Big Road เปลี่ยน (ที่ไม่ใช่ 0))
+            // (ถ้า "คอลัมน์" ใน Big Road เปลี่ยน และ "แถว" ไม่ใช่ 0)
             const isNewLine = (res.col !== lastBigRoadCol && res.row > 0);
             
             if (currentCol.length === 0 || (res.result === lastResult && !isNewLine)) {
@@ -180,11 +208,10 @@ class DerivedRoadsCalculator {
         this.bigRoadCols = this._buildBigRoadCols(shoeHistory);
         
         const bigEye = this._calculateBigEyeRoad();
-        
-        // (‼️‼️ อัปเกรด v15.0: เรียกใช้ Small Road ‼️‼️)
         const small = this._calculateSmallRoad(); 
         
-        const cockroach = {}; // (ยังไม่ทำ v16.0)
+        // (‼️‼️ อัปเกรด v16.0: เรียกใช้ Cockroach Road ‼️‼️)
+        const cockroach = this._calculateCockroachRoad(); 
         
         return {
             bigEye: bigEye,
@@ -217,14 +244,15 @@ const derivedRoadsCalculator = new DerivedRoadsCalculator();
 
 
 // ========== 2. GENESIS BLOCK (แก้แผล "AI โง่วันแรกเกิด") ==========
-const GENESIS_BLOCK_DATA = [
-    'P','B','B','P','P','P','B','B','T','B','P','B','P','B','P','P',
-    'B','B','B','B','P','P','P','P','B','P','B','P','P','B','B','B',
-    'P','T','P','P','P','B','B','P','B','P','P','B','P','P','B','B',
-    'P','P','B','B','B','B','P','P','P','B','P','B','T','P','B','P',
-    'B','P','P','B','P','B','P','P','P','B','B','B','P','P','B','P',
-    'B','P','B','B','B','B','B','P','T','P','P','B','P','B','B','P',
-    'B','P','P'
+// (‼️‼️ อัปเกรด v16.0: นี่คือข้อมูล "สำรอง" 99 ตา ‼️‼️)
+const GENESIS_BLOCK_DATA_FALLBACK = [
+    'P_UNKNOWN','B_UNKNOWN','B_UNKNOWN','P_UNKNOWN','P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','B_UNKNOWN','T','B_UNKNOWN','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN','P_UNKNOWN',
+    'B_UNKNOWN','B_UNKNOWN','B_UNKNOWN','B_UNKNOWN','P_UNKNOWN','P_UNKNOWN','P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','B_UNKNOWN','B_UNKNOWN',
+    'P_UNKNOWN','T','P_UNKNOWN','P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','B_UNKNOWN','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','B_UNKNOWN',
+    'P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','B_UNKNOWN','B_UNKNOWN','B_UNKNOWN','P_UNKNOWN','P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN','B_UNKNOWN','T','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN',
+    'B_UNKNOWN','P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN','P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','B_UNKNOWN','B_UNKNOWN','P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN',
+    'B_UNKNOWN','P_UNKNOWN','B_UNKNOWN','B_UNKNOWN','B_UNKNOWN','B_UNKNOWN','B_UNKNOWN','P_UNKNOWN','T','P_UNKNOWN','P_UNKNOWN','B_UNKNOWN','P_UNKNOWN','B_UNKNOWN','B_UNKNOWN','P_UNKNOWN',
+    'B_UNKNOWN','P_UNKNOWN','P_UNKNOWN'
 ];
 
 
@@ -431,7 +459,7 @@ async function editHistory(handId, newResult) {
 async function loadLastState() {
     const needsGenesis = await checkGenesisBlock();
     if (needsGenesis) {
-        postMessage({ command: 'RETRAIN_PROGRESS', progress: 10, message: "ตรวจพบบการใช้งานครั้งแรก... กำลังโหลด 'บล็อกกำเนิด' (Genesis Block)..." });
+        postMessage({ command: 'RETRAIN_PROGRESS', progress: 5, message: "ตรวจพบบการใช้งานครั้งแรก... กำลังโหลด 'หนังสือเรียน'..." });
         await runGenesisBlock();
         postMessage({ command: 'RETRAIN_COMPLETE' });
     }
@@ -542,7 +570,7 @@ function expertMainPatterns(h) {
     
     return 'WAIT';
 }
-function expertDerivedRoads(h) { return 'WAIT'; } // (ยังไม่ทำ v15.0)
+function expertDerivedRoads(h) { return 'WAIT'; } // (ยังไม่ทำ v17.0)
 function expertCardRules(h) { if (h.length < 1) return 'WAIT'; const r = h[h.length-1].result; if(r==='P3' || r==='B3') return 'B'; if(r==='P2' || r==='B2') return 'P'; return 'WAIT'; } 
 
 // (‼️‼️ อัปเกรด: "โมเมนตัม 10 ตาล่าสุด" ‼️‼️)
@@ -654,31 +682,88 @@ async function checkGenesisBlock() {
     return !stats; 
 }
 
+// (‼️‼️ อัปเกรด v16.0: "Genesis Brain" ‼️‼️)
 async function runGenesisBlock() {
+    let genesisData = [];
+    
+    try {
+        // (ขั้นตอนที่ 1: พยายาม "ดึง" หนังสือเรียน 10,000 ตา จากเซิร์ฟเวอร์)
+        const response = await fetch('baccarat_sim_10000.csv');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const csvText = await response.text();
+        const lines = csvText.trim().split(/\r?\n/);
+        
+        if (lines.length <= 1) throw new Error("CSV ว่างเปล่า");
+        
+        lines.shift(); // (ลบ header: "round,timestamp,result")
+        
+        genesisData = lines.map(line => {
+            const cols = line.split(',');
+            const result = cols[2]; // (คอลัมน์ "result")
+            if (result === 'T') return 'T';
+            if (result === 'P') return 'P_UNKNOWN';
+            if (result === 'B') return 'B_UNKNOWN';
+            return 'T'; // (Failsafe)
+        });
+        
+        console.log("WORKER: โหลด 'Genesis Brain (10,000 ตา)' จาก CSV สำเร็จ!");
+        postMessage({ command: 'RETRAIN_PROGRESS', progress: 15, message: "โหลด 'หนังสือเรียน 10,000 ตา' สำเร็จ! กำลังปลูกฝัง..." });
+        
+    } catch (e) {
+        // (ขั้นตอนที่ 2: ถ้า "ล้มเหลว" (เช่น 404) ให้ใช้ "ข้อมูลสำรอง" 99 ตา แทน)
+        console.warn("WORKER: ไม่พบ 'baccarat_sim_10000.csv'", e.message);
+        console.warn("WORKER: กำลังใช้ 'ข้อมูลสำรอง (99 ตา)' แทน...");
+        genesisData = GENESIS_BLOCK_DATA_FALLBACK;
+        postMessage({ command: 'RETRAIN_PROGRESS', progress: 15, message: "ไม่พบไฟล์ 10k, กำลังใช้ 'ข้อมูลสำรอง 99 ตา'..." });
+    }
+
+    // (ขั้นตอนที่ 3: "ปลูกฝัง" ข้อมูลลง DB)
     const currentShoeId = 1;
     await safeAdd('shoe_meta', { startTime: Date.now() });
 
-    const stats = {};
+    const totalLines = genesisData.length;
+    const chunkSize = 500;
     
-    for (const result of GENESIS_BLOCK_DATA) {
-        const handResult = result === 'T' ? 'T' : (result + '_UNKNOWN');
-        const handData = { result: handResult, shoe: currentShoeId, timestamp: Date.now(), lastSignal: {}, signalWin: null };
+    for (let i = 0; i < totalLines; i += chunkSize) {
+        const chunk = genesisData.slice(i, i + chunkSize);
         
-        await safeAdd('game_history', handData); 
+        const tx_game = DB.transaction('game_history', 'readwrite');
+        const tx_globals = DB.transaction('global_stats', 'readwrite');
+        const store_game = tx_game.objectStore('game_history');
+        const store_globals = tx_globals.objectStore('global_stats');
+        const globalStatsCache = {};
+
+        for (const handResult of chunk) {
+            const handData = { result: handResult, shoe: currentShoeId, timestamp: Date.now(), lastSignal: {}, signalWin: null };
+            store_game.add(handData); 
+            
+            const mainResult = handResult[0];
+            const keys = ['TOTAL_HANDS', mainResult, handResult];
+            keys.forEach(key => {
+                globalStatsCache[key] = (globalStatsCache[key] || 0) + 1;
+            });
+        }
         
-        const mainResult = handResult[0];
-        const keys = ['TOTAL_HANDS', mainResult, handResult];
-        keys.forEach(key => {
-            stats[key] = (stats[key] || 0) + 1;
+        for (const key in globalStatsCache) {
+             const data = (await store_globals.get(key)) || { key: key, value: 0 };
+             data.value += globalStatsCache[key];
+             store_globals.put(data);
+        }
+        
+        await Promise.all([tx_game.done, tx_globals.done]);
+        
+        const progress = 15 + Math.round(((i + chunk.length) / totalLines) * 85);
+        postMessage({
+            command: 'RETRAIN_PROGRESS',
+            progress: progress,
+            message: `กำลังปลูกฝัง ${i + chunk.length} / ${totalLines} ตา...`
         });
     }
-    
-    for (const key in stats) {
-        await safeWrite('global_stats', { key: key, value: stats[key] });
-    }
-
-    postMessage({ command: 'RETRAIN_PROGRESS', progress: 100, message: "โหลด 'บล็อกกำเนิด' สำเร็จ!" });
 }
+
 
 // (ฟังก์ชันอ่าน/เขียน ตารางสรุป)
 async function getGlobalStats() {
@@ -1167,7 +1252,6 @@ self.onmessage = async (e) => {
                     await retrainFromCSV(data.csvString);
                     return { command: 'RETRAIN_COMPLETE' };
                 
-                // (‼️‼️ เพิ่ม: AUTO-REPAIR ‼️‼️)
                 case 'REPAIR_BRAIN':
                     await repairBrain();
                     return { command: 'REPAIR_COMPLETE' };
@@ -1203,4 +1287,4 @@ self.onmessage = async (e) => {
     }
 };
 
-console.log("WORKER: 'สมอง AI' (worker.js v15.0 - The Small Road) โหลดแล้ว พร้อมรับคำสั่ง...");
+console.log("WORKER: 'สมอง AI' (worker.js v16.0 - The Cockroach) โหลดแล้ว พร้อมรับคำสั่ง...");
