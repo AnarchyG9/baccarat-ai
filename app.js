@@ -1,5 +1,5 @@
 // ========== PART 2: MAIN THREAD JAVASCRIPT ==========
-// นี่คือ "หน้าจอ" (UI) หรือ "เธรดหลัก" (ไฟล์ app.js)
+// นี่คือ "หน้าจอ" (UI) หรือ "เธรดหลัก" (ไฟล์ app.js v14.0)
 // ทำหน้าที่: จัดการ UI, สื่อสารกับ "สมอง" (Web Worker)
 
 // 1. DOM Elements (การเชื่อมต่อหน้าปัด)
@@ -34,6 +34,10 @@ const ui = {
     loseGlobal: document.getElementById('loseGlobal'),
     
     bigroad: document.getElementById('bigroad'),
+    
+    // (‼️‼️ เพิ่ม v14.0: DERIVED ROADS ‼️‼️)
+    bigEyeRoadGrid: document.getElementById('bigEyeRoadGrid'),
+    // (‼️‼️ จบ v14.0 ‼️‼️)
     
     aiDashboard: document.getElementById('aiDashboard'),
     expMain: document.getElementById('expMain'),
@@ -85,7 +89,6 @@ const ui = {
     togglePowerMode: document.getElementById('togglePowerMode'),
     toggleHaptics: document.getElementById('toggleHaptics'),
     
-    // (‼️‼️ เพิ่ม: META-MIND TOGGLE ‼️‼️)
     toggleMetaMind: document.getElementById('toggleMetaMind'),
 };
 
@@ -102,7 +105,7 @@ let currentTriggerValue = 5;
 let appSettings = {
     powerMode: false,
     haptics: true,
-    useMetaMind: false // (‼️‼️ เพิ่ม ‼️‼️)
+    useMetaMind: false 
 };
 // (State การยืนยัน)
 let confirmCallback = null;
@@ -113,8 +116,8 @@ function initializeWorker() {
         document.getElementById('loaderStatus').textContent = "สถานะ: กำลังสตาร์ท 'สมอง AI'...";
         try {
             // (‼️‼️ อัปเดต: Cache Busting ‼️‼️)
-            // (v13.1 - The Refactor)
-            aiWorker = new Worker('worker.js?v=1.0.3'); 
+            // (v14.0 - The Eye)
+            aiWorker = new Worker('worker.js?v=1.0.4'); 
             
             aiWorker.onmessage = handleWorkerMessage;
             aiWorker.onerror = handleWorkerError;
@@ -323,7 +326,10 @@ function updateUI(state) {
     // 5. อัปเดต Big Road
     renderBigRoad(state.history.shoe);
     
-    // 6. ปลดล็อคปุ่มกด
+    // (‼️‼️ เพิ่ม v14.0: วาดตารางย่อย ‼️‼️)
+    renderDerivedRoads(state.derivedRoads);
+    
+    // 6. (สำคัญ) ปลดล็อคปุ่มกด (แก้แผล "คลิกรัว")
     setControlsDisabled(false);
 }
 
@@ -452,6 +458,35 @@ function renderBigRoad(history) {
     
     ui.bigroad.scrollLeft = ui.bigroad.scrollWidth;
 }
+
+// (‼️‼️ เพิ่ม v14.0: DERIVED ROADS RENDERER ‼️‼️)
+function renderDerivedRoads(derivedRoads) {
+    if (!derivedRoads) return;
+
+    // --- 1. Big Eye Road (ตารางไข่ปลา) ---
+    const berGrid = ui.bigEyeRoadGrid;
+    berGrid.innerHTML = ''; // (ล้างของเก่า)
+    
+    if (derivedRoads.bigEye && derivedRoads.bigEye.cols) {
+        derivedRoads.bigEye.cols.forEach(col => {
+            const divCol = document.createElement('div');
+            divCol.className = 'dr-col'; // (ใช้คลาสใหม่)
+            col.forEach(cell => {
+                const divCell = document.createElement('div');
+                // (cell คือ "R" หรือ "B")
+                divCell.className = `dr-cell ${cell}`; 
+                divCol.appendChild(divCell);
+            });
+            berGrid.appendChild(divCol);
+        });
+        // (เลื่อนไปขวาสุด)
+        berGrid.scrollLeft = berGrid.scrollWidth;
+    }
+    
+    // (เราจะเพิ่ม Small Road และ Cockroach Road ที่นี่ในอนาคต)
+}
+// (‼️‼️ จบ v14.0 ‼️‼️)
+
 
 // E. อัปเดตหน้าต่างแก้ไขประวัติ
 function renderHistoryEditor(history, filter) {
@@ -962,6 +997,9 @@ window.closeModal = function(id) { document.getElementById(id).style.display = '
 
 
 // 10. Start Application (เริ่มแอป!)
-initializeWorker();
-resetCountdown(); 
-setupSmartControls(); // (เริ่มระบบ 'แตะ/แตะค้าง')
+// (รอให้ DOM โหลดเสร็จก่อนเริ่ม เพื่อความเสถียร)
+document.addEventListener('DOMContentLoaded', () => {
+    initializeWorker();
+    resetCountdown(); 
+    setupSmartControls(); // (เริ่มระบบ 'แตะ/แตะค้าง')
+});
