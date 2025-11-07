@@ -1,8 +1,8 @@
 /* ========== PART 3: AI BRAIN (WEB WORKER) ========== */
 /*
  * นี่คือ "สมอง AI" (God-Tier) ฉบับสมบูรณ์
- * (ฉบับแก้ไข: v13.0 - The Repair)
- * เพิ่ม: ระบบซ่อมแซมสถิติสมอง (REPAIR_BRAIN)
+ * (ฉบับแก้ไข: v14.0 - The Eye)
+ * เพิ่ม: ตรรกะการคำนวณ Big Eye Road
  *
  * ทำหน้าที่: คำนวณตรรกะ AI ทั้งหมด, จัดการฐานข้อมูล (IndexedDB)
  * มันทำงานแยกขาดจาก "หน้าจอ" (UI) โดยสิ้นเชิง
@@ -26,8 +26,10 @@ const AI_CONFIG = {
 };
 
 let CONFIG = {}; // (ประกาศตัวแปร CONFIG)
-// (‼️‼️ เพิ่ม: ที่เก็บ "สัญชาตญาณ" ‼️‼️)
-let EXPERT_WEIGHTS = {};
+let EXPERT_WEIGHTS = {}; // (ที่เก็บ "สัญชาตญาณ")
+
+// (‼️‼️ เพิ่ม v14.0: สร้างเครื่องคำนวณตารางย่อย ‼️‼️)
+const derivedRoadsCalculator = new DerivedRoadsCalculator();
 
 
 // ========== 2. GENESIS BLOCK (แก้แผล "AI โง่วันแรกเกิด") ==========
@@ -177,7 +179,6 @@ async function addHand(result, lastSignal) {
     
     const newHandId = await safeAdd('game_history', handData);
     
-    // (รันแบบ Asynchronous เพื่อ UI ที่เร็ว)
     Promise.all([
         updateGlobalStats(handData),
         updateExpertPerformance(handData)
@@ -268,7 +269,6 @@ async function deleteCurrentShoe() {
     const tx = DB.transaction(['game_history', 'global_stats', 'expert_performance', 'shoe_meta'], 'readwrite');
     const store_game = tx.objectStore('game_history');
     
-    // (สร้าง Promise array สำหรับการย้อนสถิติ)
     const reversePromises = [];
     
     for (const hand of shoeHistory) {
@@ -279,7 +279,6 @@ async function deleteCurrentShoe() {
     
     tx.objectStore('shoe_meta').delete(currentShoeId);
     
-    // (รอให้การย้อนสถิติทั้งหมดเสร็จสิ้น)
     await Promise.all(reversePromises);
     
     return new Promise((resolve, reject) => {
@@ -310,10 +309,13 @@ async function runAnalysis(lastHandId) {
     
     const shoeStats = calculateShoeStats(shoeHistory);
     
+    // (‼️‼️ เพิ่ม v14.0: คำนวณตารางย่อย ‼️‼️)
+    const derivedRoads = derivedRoadsCalculator.calculate(shoeHistory);
+    
     const votes = {};
     votes.main = expertMainPatterns(shoeHistory);
-    votes.derived = expertDerivedRoads(shoeHistory);
-    votes.rules = expertCardRules(shoeHistory);
+    votes.derived = expertDerivedRoads(shoeHistory); // (ยังไม่ปลุก)
+    votes.rules = expertCardRules(shoeHistory); 
     votes.stats = expertStats(shoeHistory); 
     votes.special = expertSpecial(shoeHistory); 
     votes.simA = expertSimulator(shoeStats, globalStats, 'stats');
@@ -333,7 +335,8 @@ async function runAnalysis(lastHandId) {
             storageSizeMB: globalStats.storageSizeMB || 0.1
         },
         signal: signal,
-        expertPerformance: expertPerformance 
+        expertPerformance: expertPerformance,
+        derivedRoads: derivedRoads // (‼️‼️ เพิ่ม v14.0: ส่งผลลัพธ์กลับไป UI ‼️‼️)
     };
 }
 
@@ -357,7 +360,7 @@ function expertMainPatterns(h) {
     
     return 'WAIT';
 }
-function expertDerivedRoads(h) { return 'WAIT'; } // (ยังไม่ทำ)
+function expertDerivedRoads(h) { return 'WAIT'; } // (ยังไม่ทำ v15.0)
 function expertCardRules(h) { if (h.length < 1) return 'WAIT'; const r = h[h.length-1].result; if(r==='P3' || r==='B3') return 'B'; if(r==='P2' || r==='B2') return 'P'; return 'WAIT'; } 
 
 // (‼️‼️ อัปเกรด: "โมเมนตัม 10 ตาล่าสุด" ‼️‼️)
@@ -728,7 +731,6 @@ async function retrainFromCSV(csvString) {
     for (let i = 0; i < totalLines; i += chunkSize) {
         const chunk = lines.slice(i, i + chunkSize);
         
-        // (‼️‼️ อัปเกรด: ใช้ Transaction เดียวต่อ Chunk ‼️‼️)
         const tx_game = DB.transaction('game_history', 'readwrite');
         const tx_globals = DB.transaction('global_stats', 'readwrite');
         const store_game = tx_game.objectStore('game_history');
@@ -759,7 +761,6 @@ async function retrainFromCSV(csvString) {
             
             store_game.add(hand); // (เพิ่มเข้า DB)
 
-            // (อัปเดตสถิติใน Cache)
             const mainResult = hand.result[0];
             const keys = ['TOTAL_HANDS', mainResult, hand.result];
             keys.forEach(key => {
@@ -767,14 +768,12 @@ async function retrainFromCSV(csvString) {
             });
         }
         
-        // (บันทึก Global Stats จาก Cache ลง DB)
         for (const key in globalStatsCache) {
              const data = (await store_globals.get(key)) || { key: key, value: 0 };
              data.value += globalStatsCache[key];
              store_globals.put(data);
         }
         
-        // (รอ Transaction ทั้ง 2 จบ)
         await Promise.all([tx_game.done, tx_globals.done]);
         
         const progress = Math.round(((i + chunk.length) / totalLines) * 100);
@@ -808,7 +807,6 @@ async function clearAllMemory(sendPostMessage = true) {
 // (ตรวจสุขภาพ - BIST)
 async function runBIST() {
     const stats = await getGlobalStats();
-    // (ใช้ .count() เพื่อความเร็ว)
     const historyCount = await DB.transaction('game_history').objectStore('game_history').count();
     
     if (!stats.TOTAL_HANDS || stats.TOTAL_HANDS < 0) {
@@ -832,7 +830,7 @@ async function checkMemoryRestart() {
     }
 }
 
-// (‼️‼️ เพิ่ม: "สรุปประวัติขอนไพ่" (ฉบับสมบูรณ์) ‼️‼️)
+// (‼️‼️ แก้ไข: "สรุปประวัติขอนไพ่" (ฉบับสมบูรณ์) ‼️‼️)
 async function getShoeSummary() {
     const allShoesMeta = await safeGetAll('shoe_meta');
     
@@ -856,7 +854,7 @@ async function getShoeSummary() {
     return summary;
 }
 
-// (‼️‼️ เพิ่ม: "ซ่อมแซมสมองอัตโนมัติ" (ฉบับสมบูรณ์) ‼️‼️)
+// (‼️‼️ เพิ่ม: "ซ่อมแซมสมองอัตโนมัติ" (ฉบับสมบูรณ์ v13.0) ‼️‼️)
 async function repairBrain() {
     postMessage({ command: 'RETRAIN_PROGRESS', progress: 0, message: "กำลังล้างสถิติเก่าที่ผิดพลาด..." });
 
@@ -872,7 +870,6 @@ async function repairBrain() {
     const totalHands = allHistory.length;
     
     // (ขั้นตอน C: คำนวณใหม่)
-    // (นี่คือตรรกะที่ "เร็วมาก" เพราะทำใน Memory ก่อน)
     const newGlobals = {};
     const newExperts = {};
     let processedCount = 0;
@@ -909,7 +906,6 @@ async function repairBrain() {
             }
         }
         
-        // (อัปเดต Progress bar เป็นระยะ)
         if (processedCount % 500 === 0) {
              const progress = 10 + Math.round((processedCount / totalHands) * 70); // (10% -> 80%)
              postMessage({ command: 'RETRAIN_PROGRESS', progress: progress, message: `กำลังคำนวณ... ${processedCount} / ${totalHands} ตา` });
@@ -979,7 +975,7 @@ self.onmessage = async (e) => {
                 case 'UPDATE_CONFIG':
                     CONFIG = { ...AI_CONFIG, ...CONFIG, ...data.config };
                     await calculateExpertWeights(); 
-                    return null; // (ไม่จำเป็นต้องส่งอะไรกลับ)
+                    return null; 
                     
                 case 'EXPORT_CSV':
                     return { command: 'EXPORT_DATA', csvString: await exportCSV() };
@@ -1024,4 +1020,166 @@ self.onmessage = async (e) => {
     }
 };
 
-console.log("WORKER: 'สมอง AI' (worker.js v13.0 - The Repair) โหลดแล้ว พร้อมรับคำสั่ง...");
+
+// (‼️‼️ เพิ่ม v14.0: DERIVED ROADS CALCULATOR ‼️‼️)
+/*
+ * นี่คือ "สมองส่วนตรรกะ" ที่ซับซ้อนที่สุด
+ * ใช้สำหรับคำนวณตารางย่อยทั้ง 3 (Big Eye, Small, Cockroach)
+ */
+class DerivedRoadsCalculator {
+    constructor() {
+        this.bigRoadCols = []; // (ข้อมูล Big Road ที่แปลงแล้ว)
+    }
+
+    // (ขั้นตอนที่ 1: แปลง History เป็น Big Road Columns)
+    _buildBigRoadCols(shoeHistory) {
+        const cols = [];
+        if (!shoeHistory || shoeHistory.length === 0) return cols;
+
+        let currentCol = [];
+        let lastResult = null;
+
+        shoeHistory.forEach(hand => {
+            const mainResult = hand.result[0]; // (P, B, T)
+
+            if (mainResult === 'T') {
+                if (currentCol.length > 0) {
+                    // (เพิ่ม TIE เข้าไปในเซลล์ล่าสุด)
+                    currentCol[currentCol.length - 1].ties = (currentCol[currentCol.length - 1].ties || 0) + 1;
+                }
+                return;
+            }
+
+            const handData = { result: mainResult, ties: 0 };
+
+            if (currentCol.length === 0 || mainResult === lastResult) {
+                currentCol.push(handData);
+            } else {
+                cols.push(currentCol); // (บันทึกคอลัมน์เก่า)
+                currentCol = [handData]; // (เริ่มคอลัมน์ใหม่)
+            }
+            lastResult = mainResult;
+        });
+
+        if (currentCol.length > 0) {
+            cols.push(currentCol); // (บันทึกคอลัมน์สุดท้าย)
+        }
+        
+        return cols;
+    }
+    
+    // (ฟังก์ชัน "ค้นหา" เซลล์ใน Big Road)
+    _getCell(col, row) {
+        if (col < 0 || row < 0) return null;
+        if (this.bigRoadCols[col] && this.bigRoadCols[col][row]) {
+            return this.bigRoadCols[col][row];
+        }
+        return null;
+    }
+    
+    // (ฟังก์ชัน "เปรียบเทียบ" ตารางย่อย)
+    _compare(colA, rowA, colB, rowB) {
+        const cellA = this._getCell(colA, rowA);
+        const cellB = this._getCell(colB, rowB);
+
+        // (ถ้า "ไม่มี" เซลล์ = เสมอ (สีน้ำเงิน))
+        if (cellA === null && cellB === null) return 'B'; // (Blue = Even)
+        // (ถ้ามีแค่ 1 เซลล์ = ไม่เสมอ (สีแดง))
+        if (cellA === null || cellB === null) return 'R'; // (Red = Chaos)
+        // (ถ้า "มี" ทั้งคู่ = เสมอ (สีน้ำเงิน))
+        return 'B'; // (Blue = Even)
+    }
+
+    // (ขั้นตอนที่ 2: คำนวณ Big Eye Road - ตารางไข่ปลา)
+    _calculateBigEyeRoad() {
+        const results = []; // (เช่น [ { col: 1, row: 1, result: "R" }, ... ])
+        
+        // (Big Eye Road เริ่มที่ "คอลัมน์ 1, แถว 1") (index 0)
+        // (มันจะเริ่มเช็คเมื่อมีข้อมูล "คอลัมน์ 1, แถว 1" (index [1][1]))
+        
+        const startCol = 1;
+        const startRow = 1;
+        
+        for (let c = startCol; c < this.bigRoadCols.length; c++) {
+            for (let r = 0; r < this.bigRoadCols[c].length; r++) {
+                
+                // (ข้ามเซลล์ [1][0] เพราะมันคือจุดอ้างอิงแรก)
+                if (r === 0 && c === startCol) continue; 
+
+                let result;
+                if (r === 0) {
+                    // (ถ้าอยู่แถวบนสุด: เทียบคอลัมน์ก่อนหน้า)
+                    // (เทียบ [c][0] กับ [c-1][0])
+                    result = this._compare(c, 0, c - 1, 0);
+                } else {
+                    // (ถ้าอยู่แถวอื่น: เทียบเซลล์ข้างบน กับ เซลล์ซ้าย)
+                    
+                    // (ตรรกะ "มังกร" (Dragon tail) ของตารางย่อย)
+                    // (ถ้า [c][r-1] (ข้างบน) "มี" -> ให้ใช้ผลลัพธ์แนวตั้ง)
+                    if (this._getCell(c, r - 1) !== null) {
+                        // (เทียบ [c][r] กับ [c][r-1])
+                        result = this._compare(c, r, c, r - 1);
+                    } else {
+                    // (ถ้า [c][r-1] (ข้างบน) "ไม่มี" -> ให้ใช้ผลลัพธ์แนวนอน)
+                        // (เทียบ [c][r] กับ [c-1][r])
+                        result = this._compare(c, r, c - 1, r);
+                    }
+                }
+                
+                // (บันทึกผลลัพธ์)
+                results.push({ col: c, row: r, result: result });
+            }
+        }
+        return this._formatToGrid(results);
+    }
+    
+    // (ขั้นตอนที่ 3: จัดรูปแบบผลลัพธ์ (R, B) ให้อยู่ในตาราง Grid)
+    _formatToGrid(results) {
+        const cols = [];
+        if (!results || results.length === 0) return { cols };
+
+        let currentCol = [];
+        let lastResult = null;
+        let lastBigRoadCol = -1;
+        let lastBigRoadRow = -1;
+
+        results.forEach(res => {
+            // (ตรวจสอบว่าเซลล์ใน Big Road "ติดกัน" หรือไม่)
+            // (ถ้า "คอลัมน์" ใน Big Road เปลี่ยน หรือ "แถว" ใน Big Road เปลี่ยน (ที่ไม่ใช่ 0))
+            const isNewLine = (res.col !== lastBigRoadCol && res.row > 0);
+            
+            if (currentCol.length === 0 || res.result === lastResult) {
+                currentCol.push(res.result); // (เพิ่ม R หรือ B)
+            } else {
+                cols.push(currentCol); // (บันทึกคอลัมน์เก่า)
+                currentCol = [res.result]; // (เริ่มคอลัมน์ใหม่)
+            }
+            
+            lastResult = res.result;
+            lastBigRoadCol = res.col;
+            lastBigRoadRow = res.row;
+        });
+
+        if (currentCol.length > 0) {
+            cols.push(currentCol); // (บันทึกคอลัมน์สุดท้าย)
+        }
+        
+        return { cols: cols }; // (เช่น { cols: [ ["R", "R"], ["B", "B", "B"] ] })
+    }
+
+    // (ฟังก์ชัน "หลัก" ที่จะถูกเรียกจากภายนอก)
+    calculate(shoeHistory) {
+        this.bigRoadCols = this._buildBigRoadCols(shoeHistory);
+        
+        const bigEye = this._calculateBigEyeRoad();
+        const small = {}; // (ยังไม่ทำ v15.0)
+        const cockroach = {}; // (ยังไม่ทำ v16.0)
+        
+        return {
+            bigEye: bigEye,
+            small: small,
+            cockroach: cockroach
+        };
+    }
+}
+// (‼️‼️ จบ v14.0 ‼️‼️)
