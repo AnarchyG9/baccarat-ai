@@ -1,10 +1,8 @@
 /* ========== PART 3: AI BRAIN (WEB WORKER) ========== */
 /*
  * นี่คือ "สมอง AI" (God-Tier) ฉบับสมบูรณ์
- * (ฉบับแก้ไข: v17.1 - The Awakening (Bugfix))
- * แก้ไข: ReferenceError โดยย้าย Class ไปไว้บนสุด
- * เพิ่ม: "ปลุก" expertDerivedRoads ให้อ่าน 3 ตารางย่อย
- * เพิ่ม: โหลด Genesis Block 10,000 ตา
+ * (ฉบับแก้ไข: v16.0 - The Cockroach + 10k Genesis Brain)
+ * เพิ่ม: ตรรกะ Cockroach Road และระบบโหลด Genesis Block 10,000 ตา
  *
  * ทำหน้าที่: คำนวณตรรกะ AI ทั้งหมด, จัดการฐานข้อมูล (IndexedDB)
  * มันทำงานแยกขาดจาก "หน้าจอ" (UI) โดยสิ้นเชิง
@@ -12,7 +10,7 @@
 
 "use strict";
 
-// (‼️‼️ ย้าย v17.1: DERIVED ROADS CALCULATOR มาไว้บนสุด ‼️‼️)
+// (‼️‼️ v14.0: DERIVED ROADS CALCULATOR ‼️‼️)
 /*
  * นี่คือ "สมองส่วนตรรกะ" ที่ซับซ้อนที่สุด
  * ใช้สำหรับคำนวณตารางย่อยทั้ง 3 (Big Eye, Small, Cockroach)
@@ -72,8 +70,11 @@ class DerivedRoadsCalculator {
         const cellA = this._getCell(colA, rowA);
         const cellB = this._getCell(colB, rowB);
 
+        // (ถ้า "ไม่มี" เซลล์ = เสมอ (สีน้ำเงิน))
         if (cellA === null && cellB === null) return 'B'; // (Blue = Even)
+        // (ถ้ามีแค่ 1 เซลล์ = ไม่เสมอ (สีแดง))
         if (cellA === null || cellB === null) return 'R'; // (Red = Chaos)
+        // (ถ้า "มี" ทั้งคู่ = เสมอ (สีน้ำเงิน))
         return 'B'; // (Blue = Even)
     }
 
@@ -137,7 +138,7 @@ class DerivedRoadsCalculator {
         return this._formatToGrid(results);
     }
     
-    // (ขั้นตอนที่ 4: คำนวณ Cockroach Road - ตารางแมลงสาบ)
+    // (‼️‼️ เพิ่ม v16.0: คำนวณ Cockroach Road - ตารางแมลงสาบ ‼️‼️)
     _calculateCockroachRoad() {
         const results = []; 
         const startCol = 3; // (Cockroach Road เริ่มที่คอลัมน์ 3)
@@ -168,7 +169,7 @@ class DerivedRoadsCalculator {
     }
 
 
-    // (ขั้นตอนที่ 5: จัดรูปแบบผลลัพธ์ (R, B) ให้อยู่ในตาราง Grid)
+    // (ขั้นตอนที่ 4: จัดรูปแบบผลลัพธ์ (R, B) ให้อยู่ในตาราง Grid)
     _formatToGrid(results) {
         const cols = [];
         if (!results || results.length === 0) return { cols };
@@ -179,6 +180,8 @@ class DerivedRoadsCalculator {
         let lastBigRoadRow = -1;
 
         results.forEach(res => {
+            // (ตรวจสอบว่าเซลล์ใน Big Road "ติดกัน" หรือไม่)
+            // (ถ้า "คอลัมน์" ใน Big Road เปลี่ยน และ "แถว" ไม่ใช่ 0)
             const isNewLine = (res.col !== lastBigRoadCol && res.row > 0);
             
             if (currentCol.length === 0 || (res.result === lastResult && !isNewLine)) {
@@ -197,87 +200,23 @@ class DerivedRoadsCalculator {
             cols.push(currentCol); // (บันทึกคอลัมน์สุดท้าย)
         }
         
-        return { cols: cols }; 
+        return { cols: cols }; // (เช่น { cols: [ ["R", "R"], ["B", "B", "B"] ] })
     }
 
     // (ฟังก์ชัน "หลัก" ที่จะถูกเรียกจากภายนอก)
     calculate(shoeHistory) {
-        // (ขั้นตอนนี้สำคัญมาก: มัน "สร้าง" this.bigRoadCols)
         this.bigRoadCols = this._buildBigRoadCols(shoeHistory);
         
         const bigEye = this._calculateBigEyeRoad();
         const small = this._calculateSmallRoad(); 
+        
+        // (‼️‼️ อัปเกรด v16.0: เรียกใช้ Cockroach Road ‼️‼️)
         const cockroach = this._calculateCockroachRoad(); 
         
         return {
             bigEye: bigEye,
             small: small,
             cockroach: cockroach
-        };
-    }
-    
-    // (‼️‼️ เพิ่ม v17.0: "The Awakening" - ตรรกะการทำนาย ‼️‼️)
-    
-    // (ฟังก์ชัน "ค้นหา" ตำแหน่ง "ตาถัดไป" ใน Big Road)
-    _findNextCell() {
-        if (this.bigRoadCols.length === 0) {
-            return { col: 0, row: 0 }; // (ตาแรกสุด)
-        }
-        
-        const lastColIndex = this.bigRoadCols.length - 1;
-        const lastCol = this.bigRoadCols[lastColIndex];
-        const lastRowIndex = lastCol.length - 1;
-        
-        // (จำลองว่าถ้า "ตาต่อไป" เป็น "ผลลัพธ์เดิม" (มังกร))
-        return { col: lastColIndex, row: lastRowIndex + 1 };
-    }
-    
-    // (ฟังก์ชัน "ทำนาย" ผลลัพธ์ของตารางย่อย)
-    _predictNextDerivedEntry(colOffset) {
-        const { col: c, row: r } = this._findNextCell();
-        
-        // (ไม่สามารถทำนายได้ถ้าข้อมูลน้อยเกินไป)
-        if (c < colOffset) return null; 
-        // (ข้ามเซลล์อ้างอิงแรก)
-        if (r === 0 && c === colOffset) return null;
-
-        let result;
-        if (r === 0) {
-            // (แถวบนสุด: เทียบ [c][0] กับ [c-offset][0])
-            result = this._compare(c, 0, c - colOffset, 0);
-        } else {
-            // (แถวอื่น)
-            if (this._getCell(c, r - 1) !== null) {
-                // (มังกร: เทียบ [c][r] กับ [c][r-1])
-                result = this._compare(c, r, c, r - 1);
-            } else {
-                // (ไม่ใช่แถวมังกร: เทียบ [c][r] กับ [c-offset][r])
-                result = this._compare(c, r, c - colOffset, r);
-            }
-        }
-        return result; // (R หรือ B)
-    }
-
-    // (ฟังก์ชัน "หลัก" ที่เรียกโดย expertDerivedRoads)
-    getDerivedPredictions() {
-        // (this.bigRoadCols ต้องถูกสร้างโดย .calculate() ก่อนแล้ว)
-        if (this.bigRoadCols.length === 0) {
-            return { ber: null, sr: null, cr: null };
-        }
-        
-        // (ทำนาย Big Eye Road)
-        const nextBER = this._predictNextDerivedEntry(1); // (เทียบ [c] กับ [c-1])
-        
-        // (ทำนาย Small Road)
-        const nextSR = this._predictNextDerivedEntry(2); // (เทียบ [c] กับ [c-2])
-        
-        // (ทำนาย Cockroach Road)
-        const nextCR = this._predictNextDerivedEntry(3); // (เทียบ [c] กับ [c-3])
-        
-        return {
-            ber: nextBER,
-            sr: nextSR,
-            cr: nextCR
         };
     }
 }
@@ -300,7 +239,7 @@ const AI_CONFIG = {
 let CONFIG = {}; // (ประกาศตัวแปร CONFIG)
 let EXPERT_WEIGHTS = {}; // (ที่เก็บ "สัญชาตญาณ")
 
-// (‼️‼️ แก้ไข v17.1: สร้าง instance "หลัง" class ‼️‼️)
+// (‼️‼️ แก้ไข v14.1: สร้าง instance "หลัง" class ‼️‼️)
 const derivedRoadsCalculator = new DerivedRoadsCalculator();
 
 
@@ -580,13 +519,12 @@ async function runAnalysis(lastHandId) {
     
     const shoeStats = calculateShoeStats(shoeHistory);
     
-    // (‼️‼️ อัปเกรด v16.0: คำนวณตารางย่อย ‼️‼️)
-    // (ขั้นตอนนี้จะ "สร้าง" this.bigRoadCols ภายใน calculator)
+    // (‼️‼️ เพิ่ม v14.0: คำนวณตารางย่อย ‼️‼️)
     const derivedRoads = derivedRoadsCalculator.calculate(shoeHistory);
     
     const votes = {};
     votes.main = expertMainPatterns(shoeHistory);
-    votes.derived = expertDerivedRoads(shoeHistory); // (‼️‼️ v17.0: "ปลุก" ‼️‼️)
+    votes.derived = expertDerivedRoads(shoeHistory); // (ยังไม่ปลุก)
     votes.rules = expertCardRules(shoeHistory); 
     votes.stats = expertStats(shoeHistory); 
     votes.special = expertSpecial(shoeHistory); 
@@ -608,11 +546,12 @@ async function runAnalysis(lastHandId) {
         },
         signal: signal,
         expertPerformance: expertPerformance,
-        derivedRoads: derivedRoads // (ส่งผลลัพธ์กลับไป UI)
+        derivedRoads: derivedRoads // (‼️‼️ เพิ่ม v14.0: ส่งผลลัพธ์กลับไป UI ‼️‼️)
     };
 }
 
 // ========== 6. AI EXPERTS (ผู้เชี่ยวชาญ 9 ตัว) ==========
+// (‼️‼️ อัปเกรด: "ลับคม" ‼️‼️)
 
 function expertMainPatterns(h) {
     if (h.length < 2) return 'WAIT';
@@ -631,37 +570,10 @@ function expertMainPatterns(h) {
     
     return 'WAIT';
 }
-
-// (‼️‼️ อัปเกรด v17.0: "THE AWAKENING" ‼️‼️)
-function expertDerivedRoads(h) {
-    // (calculator instance ถูกเรียกใช้ใน runAnalysis และสร้าง .bigRoadCols ไว้แล้ว)
-    // (เราแค่เรียก "ฟังก์ชันทำนาย" จาก instance ที่มีอยู่)
-    const preds = derivedRoadsCalculator.getDerivedPredictions();
-    
-    // (ถ้า null = ข้อมูลไม่พอ)
-    if (preds.ber === null || preds.sr === null || preds.cr === null) {
-        return 'WAIT'; 
-    }
-
-    // (ตรรกะ "Triple Alignment")
-    // (R = Chaos, B = Order)
-    
-    // (ถ้าทั้ง 3 ตาราง "เห็นตรงกัน" ว่าตาต่อไปจะเป็น "Chaos")
-    if (preds.ber === 'R' && preds.sr === 'R' && preds.cr === 'R') {
-        return 'P'; // (โหวต Player)
-    }
-    
-    // (ถ้าทั้ง 3 ตาราง "เห็นตรงกัน" ว่าตาต่อไปจะเป็น "Order")
-    if (preds.ber === 'B' && preds.sr === 'B' && preds.cr === 'B') {
-        return 'B'; // (โหวต Banker)
-    }
-    
-    // (ถ้าไม่ตรงกันเลย = รอดู)
-    return 'WAIT';
-}
-
+function expertDerivedRoads(h) { return 'WAIT'; } // (ยังไม่ทำ v17.0)
 function expertCardRules(h) { if (h.length < 1) return 'WAIT'; const r = h[h.length-1].result; if(r==='P3' || r==='B3') return 'B'; if(r==='P2' || r==='B2') return 'P'; return 'WAIT'; } 
 
+// (‼️‼️ อัปเกรด: "โมเมนตัม 10 ตาล่าสุด" ‼️‼️)
 function expertStats(h) {
     if (h.length < 10) return 'WAIT'; // (รอข้อมูล 10 ตา)
     const last10 = h.slice(-10);
@@ -679,6 +591,7 @@ function expertStats(h) {
     return 'WAIT';
 }
 
+// (‼️‼️ อัปเกรด: "มือโปรไม่เล่นตอน TIE" ‼️‼️)
 function expertSpecial(h) {
     if (h.length < 1) return 'WAIT';
     if(h[h.length-1].result === 'T') return 'WAIT'; // (ตาที่แล้ว TIE -> ให้รอดู)
@@ -775,7 +688,7 @@ async function runGenesisBlock() {
     
     try {
         // (ขั้นตอนที่ 1: พยายาม "ดึง" หนังสือเรียน 10,000 ตา จากเซิร์ฟเวอร์)
-        const response = await fetch('baccarat_sim_10000.csv'); // (ไฟล์ที่คุณอัปโหลด)
+        const response = await fetch('baccarat_sim_10000.csv');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -1374,4 +1287,4 @@ self.onmessage = async (e) => {
     }
 };
 
-console.log("WORKER: 'สมอง AI' (worker.js v17.1 - The Awakening Bugfix) โหลดแล้ว พร้อมรับคำสั่ง...");
+console.log("WORKER: 'สมอง AI' (worker.js v16.0 - The Cockroach) โหลดแล้ว พร้อมรับคำสั่ง...");
