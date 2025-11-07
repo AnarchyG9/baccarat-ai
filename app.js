@@ -1,5 +1,5 @@
 // ========== PART 2: MAIN THREAD JAVASCRIPT ==========
-// นี่คือ "หน้าจอ" (UI) หรือ "เธรดหลัก" (ไฟล์ app.js v15.0)
+// นี่คือ "หน้าจอ" (UI) หรือ "เธรดหลัก" (ไฟล์ app.js v16.0)
 // ทำหน้าที่: จัดการ UI, สื่อสารกับ "สมอง" (Web Worker)
 
 // 1. DOM Elements (การเชื่อมต่อหน้าปัด)
@@ -35,10 +35,11 @@ const ui = {
     
     bigroad: document.getElementById('bigroad'),
     
-    // (‼️‼️ อัปเกรด v15.0: DERIVED ROADS ‼️‼️)
+    // (‼️‼️ อัปเกรด v16.0: DERIVED ROADS ‼️‼️)
     bigEyeRoadGrid: document.getElementById('bigEyeRoadGrid'),
     smallRoadGrid: document.getElementById('smallRoadGrid'),
-    // (‼️‼️ จบ v15.0 ‼️‼️)
+    cockroachRoadGrid: document.getElementById('cockroachRoadGrid'),
+    // (‼️‼️ จบ v16.0 ‼️‼️)
     
     aiDashboard: document.getElementById('aiDashboard'),
     expMain: document.getElementById('expMain'),
@@ -116,9 +117,9 @@ function initializeWorker() {
     if (window.Worker) {
         document.getElementById('loaderStatus').textContent = "สถานะ: กำลังสตาร์ท 'สมอง AI'...";
         try {
-            // (‼️‼️ อัปเดต: Cache Busting ‼️‼️)
-            // (v15.0 - The Small Road)
-            aiWorker = new Worker('worker.js?v=1.0.5'); 
+            // (‼️‼️ อัปเกรด: Cache Busting ‼️‼️)
+            // (v16.0 - The Cockroach)
+            aiWorker = new Worker('worker.js?v=1.0.6'); 
             
             aiWorker.onmessage = handleWorkerMessage;
             aiWorker.onerror = handleWorkerError;
@@ -208,7 +209,6 @@ function handleWorkerMessage(e) {
             aiWorker.postMessage({ command: 'LOAD_LAST_STATE' });
             break;
             
-        // (‼️‼️ เพิ่ม: REPAIR_COMPLETE ‼️‼️)
         case 'REPAIR_COMPLETE':
             ui.retrainOverlay.style.display = 'none';
             alert('ซิงค์สถิติสมองใหม่สำเร็จ! ข้อมูลถูกต้อง 100%');
@@ -327,7 +327,7 @@ function updateUI(state) {
     // 5. อัปเดต Big Road
     renderBigRoad(state.history.shoe);
     
-    // (‼️‼️ เพิ่ม v14.0: วาดตารางย่อย ‼️‼️)
+    // (‼️‼️ อัปเกรด v16.0: วาดตารางย่อย ‼️‼️)
     renderDerivedRoads(state.derivedRoads);
     
     // 6. (สำคัญ) ปลดล็อคปุ่มกด (แก้แผล "คลิกรัว")
@@ -460,7 +460,7 @@ function renderBigRoad(history) {
     ui.bigroad.scrollLeft = ui.bigroad.scrollWidth;
 }
 
-// (‼️‼️ อัปเกรด v15.0: DERIVED ROADS RENDERER ‼️‼️)
+// (‼️‼️ อัปเกรด v16.0: DERIVED ROADS RENDERER ‼️‼️)
 function renderDerivedRoads(derivedRoads) {
     if (!derivedRoads) return;
 
@@ -474,13 +474,11 @@ function renderDerivedRoads(derivedRoads) {
             divCol.className = 'dr-col'; // (ใช้คลาสใหม่)
             col.forEach(cell => {
                 const divCell = document.createElement('div');
-                // (cell คือ "R" หรือ "B")
-                divCell.className = `dr-cell ber-${cell}`; // (‼️‼️ v15.0: เปลี่ยนชื่อคลาส)
+                divCell.className = `dr-cell ber-${cell}`; 
                 divCol.appendChild(divCell);
             });
             berGrid.appendChild(divCol);
         });
-        // (เลื่อนไปขวาสุด)
         berGrid.scrollLeft = berGrid.scrollWidth;
     }
     
@@ -494,17 +492,33 @@ function renderDerivedRoads(derivedRoads) {
             divCol.className = 'dr-col'; 
             col.forEach(cell => {
                 const divCell = document.createElement('div');
-                // (cell คือ "R" หรือ "B")
-                divCell.className = `dr-cell sr-${cell}`; // (‼️‼️ v15.0: ใช้คลาสใหม่)
+                divCell.className = `dr-cell sr-${cell}`; 
                 divCol.appendChild(divCell);
             });
             srGrid.appendChild(divCol);
         });
-        // (เลื่อนไปขวาสุด)
         srGrid.scrollLeft = srGrid.scrollWidth;
     }
+    
+    // --- 3. Cockroach Road (ตารางแมลงสาบ) ---
+    const crGrid = ui.cockroachRoadGrid;
+    crGrid.innerHTML = ''; // (ล้างของเก่า)
+    
+    if (derivedRoads.cockroach && derivedRoads.cockroach.cols) {
+        derivedRoads.cockroach.cols.forEach(col => {
+            const divCol = document.createElement('div');
+            divCol.className = 'dr-col'; 
+            col.forEach(cell => {
+                const divCell = document.createElement('div');
+                divCell.className = `dr-cell cr-${cell}`; // (‼️‼️ v16.0: ใช้คลาสใหม่)
+                divCol.appendChild(divCell);
+            });
+            crGrid.appendChild(divCol);
+        });
+        crGrid.scrollLeft = crGrid.scrollWidth;
+    }
 }
-// (‼️‼️ จบ v15.0 ‼️‼️)
+// (‼️‼️ จบ v16.0 ‼️‼️)
 
 
 // E. อัปเดตหน้าต่างแก้ไขประวัติ
