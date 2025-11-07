@@ -1,8 +1,8 @@
 /* ========== PART 3: AI BRAIN (WEB WORKER) ========== */
 /*
- * นี่คือ "สมอง AI" (God-Tier) ฉบับสมบูรณ์
- * (ฉบับแก้ไข: v16.0 - The Cockroach + 10k Genesis Brain)
- * เพิ่ม: ตรรกะ Cockroach Road และระบบโหลด Genesis Block 10,000 ตา
+ * นี่คือ "สมอง AI" (God-Tier)
+ * (ฉบับแก้ไข: v17.0 - Awakened Derived Roads Expert)
+ * เพิ่ม: ตรรกะ "อ่าน" ตารางย่อยสำหรับ expertDerivedRoads
  *
  * ทำหน้าที่: คำนวณตรรกะ AI ทั้งหมด, จัดการฐานข้อมูล (IndexedDB)
  * มันทำงานแยกขาดจาก "หน้าจอ" (UI) โดยสิ้นเชิง
@@ -524,7 +524,8 @@ async function runAnalysis(lastHandId) {
     
     const votes = {};
     votes.main = expertMainPatterns(shoeHistory);
-    votes.derived = expertDerivedRoads(shoeHistory); // (ยังไม่ปลุก)
+    // (‼️‼️ อัปเกรด v17.0: "เดินสายไฟ" ส่ง derivedRoads ไปให้ Expert ‼️‼️)
+    votes.derived = expertDerivedRoads(derivedRoads); 
     votes.rules = expertCardRules(shoeHistory); 
     votes.stats = expertStats(shoeHistory); 
     votes.special = expertSpecial(shoeHistory); 
@@ -553,6 +554,22 @@ async function runAnalysis(lastHandId) {
 // ========== 6. AI EXPERTS (ผู้เชี่ยวชาญ 9 ตัว) ==========
 // (‼️‼️ อัปเกรด: "ลับคม" ‼️‼️)
 
+// (‼️‼️ เพิ่ม v17.0: "ตัวช่วย" อ่านตารางย่อย ‼️‼️)
+// (ฟังก์ชันนี้จะหา "ผลลัพธ์ตัวสุดท้าย" (R หรือ B) จากตารางย่อย)
+function _getLastEntry(road) {
+    if (!road || !road.cols || road.cols.length === 0) {
+        return null; // (ตารางว่าง)
+    }
+    // (หาคอลัมน์สุดท้ายที่ไม่ว่าง)
+    const lastCol = road.cols[road.cols.length - 1];
+    if (lastCol.length === 0) {
+        return null; // (คอลัมน์สุดท้ายว่าง)
+    }
+    // (คืนค่า "ตัวอักษรสุดท้าย" (R หรือ B) จากคอลัมน์นั้น)
+    return lastCol[lastCol.length - 1];
+}
+
+
 function expertMainPatterns(h) {
     if (h.length < 2) return 'WAIT';
     const last = h[h.length-1].result[0];
@@ -570,7 +587,43 @@ function expertMainPatterns(h) {
     
     return 'WAIT';
 }
-function expertDerivedRoads(h) { return 'WAIT'; } // (ยังไม่ทำ v17.0)
+
+// (‼️‼️ อัปเกรด v17.0: "ปลุกสมอง" ตารางย่อย ‼️‼️)
+function expertDerivedRoads(derivedRoads) {
+    // (ตรรกะพื้นฐาน: อ่านผลลัพธ์สุดท้ายจากทั้ง 3 ตาราง)
+    const lastBigEye = _getLastEntry(derivedRoads.bigEye);
+    const lastSmall = _getLastEntry(derivedRoads.small);
+    const lastCockroach = _getLastEntry(derivedRoads.cockroach);
+    
+    let rCount = 0; // (Red = Chaos)
+    let bCount = 0; // (Blue = Order)
+    
+    const votes = [lastBigEye, lastSmall, lastCockroach];
+    
+    votes.forEach(vote => {
+        if (vote === 'R') rCount++;
+        else if (vote === 'B') bCount++;
+    });
+    
+    // (ถ้าไม่มีใครโหวตเลย -> รอก่อน)
+    if (rCount === 0 && bCount === 0) {
+        return 'WAIT';
+    }
+    
+    // (ถ้าเสียง R (Chaos) ชนะ -> โหวต P)
+    if (rCount > bCount) {
+        return 'P';
+    }
+    
+    // (ถ้าเสียง B (Order) ชนะ -> โหวต B)
+    if (bCount > rCount) {
+        return 'B';
+    }
+
+    // (ถ้า R และ B เสมอกัน -> รอดู)
+    return 'WAIT';
+}
+
 function expertCardRules(h) { if (h.length < 1) return 'WAIT'; const r = h[h.length-1].result; if(r==='P3' || r==='B3') return 'B'; if(r==='P2' || r==='B2') return 'P'; return 'WAIT'; } 
 
 // (‼️‼️ อัปเกรด: "โมเมนตัม 10 ตาล่าสุด" ‼️‼️)
@@ -1287,4 +1340,5 @@ self.onmessage = async (e) => {
     }
 };
 
-console.log("WORKER: 'สมอง AI' (worker.js v16.0 - The Cockroach) โหลดแล้ว พร้อมรับคำสั่ง...");
+console.log("WORKER: 'สมอง AI' (worker.js v17.0 - Awakened) โหลดแล้ว พร้อมรับคำสั่ง...");
+
