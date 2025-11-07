@@ -1,8 +1,8 @@
 /* ========== PART 3: AI BRAIN (WEB WORKER) ========== */
 /*
  * นี่คือ "สมอง AI" (God-Tier) ฉบับสมบูรณ์
- * (ฉบับแก้ไข: v14.1 - The Eye (Bugfix))
- * แก้ไข: ReferenceError โดยย้าย Class ไปไว้บนสุด
+ * (ฉบับแก้ไข: v15.0 - The Small Road)
+ * เพิ่ม: ตรรกะการคำนวณ Small Road
  *
  * ทำหน้าที่: คำนวณตรรกะ AI ทั้งหมด, จัดการฐานข้อมูล (IndexedDB)
  * มันทำงานแยกขาดจาก "หน้าจอ" (UI) โดยสิ้นเชิง
@@ -10,7 +10,7 @@
 
 "use strict";
 
-// (‼️‼️ ย้าย v14.0: DERIVED ROADS CALCULATOR มาไว้บนสุด ‼️‼️)
+// (‼️‼️ v14.0: DERIVED ROADS CALCULATOR ‼️‼️)
 /*
  * นี่คือ "สมองส่วนตรรกะ" ที่ซับซ้อนที่สุด
  * ใช้สำหรับคำนวณตารางย่อยทั้ง 3 (Big Eye, Small, Cockroach)
@@ -81,13 +81,8 @@ class DerivedRoadsCalculator {
 
     // (ขั้นตอนที่ 2: คำนวณ Big Eye Road - ตารางไข่ปลา)
     _calculateBigEyeRoad() {
-        const results = []; // (เช่น [ { col: 1, row: 1, result: "R" }, ... ])
-        
-        // (Big Eye Road เริ่มที่ "คอลัมน์ 1, แถว 1") (index 0)
-        // (มันจะเริ่มเช็คเมื่อมีข้อมูล "คอลัมน์ 1, แถว 1" (index [1][1]))
-        
+        const results = []; 
         const startCol = 1;
-        const startRow = 1;
         
         for (let c = startCol; c < this.bigRoadCols.length; c++) {
             for (let r = 0; r < this.bigRoadCols[c].length; r++) {
@@ -97,31 +92,55 @@ class DerivedRoadsCalculator {
 
                 let result;
                 if (r === 0) {
-                    // (ถ้าอยู่แถวบนสุด: เทียบคอลัมน์ก่อนหน้า)
-                    // (เทียบ [c][0] กับ [c-1][0])
+                    // (แถวบนสุด: เทียบ [c][0] กับ [c-1][0])
                     result = this._compare(c, 0, c - 1, 0);
                 } else {
-                    // (ถ้าอยู่แถวอื่น: เทียบเซลล์ข้างบน กับ เซลล์ซ้าย)
-                    
-                    // (ตรรกะ "มังกร" (Dragon tail) ของตารางย่อย)
-                    // (ถ้า [c][r-1] (ข้างบน) "มี" -> ให้ใช้ผลลัพธ์แนวตั้ง)
+                    // (แถวอื่น)
                     if (this._getCell(c, r - 1) !== null) {
-                        // (เทียบ [c][r] กับ [c][r-1])
+                        // (มังกร: เทียบ [c][r] กับ [c][r-1])
                         result = this._compare(c, r, c, r - 1);
                     } else {
-                    // (ถ้า [c][r-1] (ข้างบน) "ไม่มี" -> ให้ใช้ผลลัพธ์แนวนอน)
-                        // (เทียบ [c][r] กับ [c-1][r])
+                        // (ไม่ใช่แถวมังกร: เทียบ [c][r] กับ [c-1][r])
                         result = this._compare(c, r, c - 1, r);
                     }
                 }
-                
-                // (บันทึกผลลัพธ์)
                 results.push({ col: c, row: r, result: result });
             }
         }
         return this._formatToGrid(results);
     }
     
+    // (‼️‼️ เพิ่ม v15.0: คำนวณ Small Road - ตารางไม้ขีด ‼️‼️)
+    _calculateSmallRoad() {
+        const results = []; 
+        const startCol = 2; // (Small Road เริ่มที่คอลัมน์ 2)
+        
+        for (let c = startCol; c < this.bigRoadCols.length; c++) {
+            for (let r = 0; r < this.bigRoadCols[c].length; r++) {
+                
+                // (ข้ามเซลล์ [2][0] เพราะมันคือจุดอ้างอิงแรก)
+                if (r === 0 && c === startCol) continue; 
+
+                let result;
+                if (r === 0) {
+                    // (แถวบนสุด: เทียบ [c][0] กับ [c-2][0])
+                    result = this._compare(c, 0, c - 2, 0);
+                } else {
+                    // (แถวอื่น)
+                    if (this._getCell(c, r - 1) !== null) {
+                        // (มังกร: เทียบ [c][r] กับ [c][r-1])
+                        result = this._compare(c, r, c, r - 1);
+                    } else {
+                        // (ไม่ใช่แถวมังกร: เทียบ [c][r] กับ [c-2][r])
+                        result = this._compare(c, r, c - 2, r);
+                    }
+                }
+                results.push({ col: c, row: r, result: result });
+            }
+        }
+        return this._formatToGrid(results);
+    }
+
     // (ขั้นตอนที่ 3: จัดรูปแบบผลลัพธ์ (R, B) ให้อยู่ในตาราง Grid)
     _formatToGrid(results) {
         const cols = [];
@@ -137,7 +156,7 @@ class DerivedRoadsCalculator {
             // (ถ้า "คอลัมน์" ใน Big Road เปลี่ยน หรือ "แถว" ใน Big Road เปลี่ยน (ที่ไม่ใช่ 0))
             const isNewLine = (res.col !== lastBigRoadCol && res.row > 0);
             
-            if (currentCol.length === 0 || res.result === lastResult) {
+            if (currentCol.length === 0 || (res.result === lastResult && !isNewLine)) {
                 currentCol.push(res.result); // (เพิ่ม R หรือ B)
             } else {
                 cols.push(currentCol); // (บันทึกคอลัมน์เก่า)
@@ -161,7 +180,10 @@ class DerivedRoadsCalculator {
         this.bigRoadCols = this._buildBigRoadCols(shoeHistory);
         
         const bigEye = this._calculateBigEyeRoad();
-        const small = {}; // (ยังไม่ทำ v15.0)
+        
+        // (‼️‼️ อัปเกรด v15.0: เรียกใช้ Small Road ‼️‼️)
+        const small = this._calculateSmallRoad(); 
+        
         const cockroach = {}; // (ยังไม่ทำ v16.0)
         
         return {
@@ -171,7 +193,7 @@ class DerivedRoadsCalculator {
         };
     }
 }
-// (‼️‼️ จบ v14.0 Class ‼️‼️)
+// (‼️‼️ จบ Class ‼️‼️)
 
 
 // ========== 1. AI CONFIGURATION (แก้แผล "บำรุงรักษา") ==========
@@ -179,13 +201,11 @@ const AI_CONFIG = {
     // (1-9) ค่าเริ่มต้น (จะถูกแปลงเป็น "คะแนน")
     TRIGGER_THRESHOLD: 5,
     
-    // (‼️‼️ เพิ่ม: META-MIND CONFIG ‼️‼️)
     USE_META_MIND: false, // (ปิดเป็นค่าเริ่มต้น)
     META_MIND_DEFAULT_WEIGHT: 0.50, // (น้ำหนักเริ่มต้นสำหรับ Expert ที่ "ยังไม่เคย" โหวต)
     META_MIND_MIN_VOTES: 20, // (Expert ต้องมีประวัติโหวตอย่างน้อย 20 ครั้ง ก่อนที่เราจะ "เชื่อ" Winrate ของมัน)
     META_MIND_NORMALIZATION_FACTOR: 0.55, // (ค่าคงที่สำหรับแปลง Slider 1-9 -> คะแนน (Score))
 
-    // (แก้แผล "Memory Leak") - รีสตาร์ทสมองทุกๆ กี่ตา
     MEMORY_RESTART_INTERVAL: 0 // (0 = ปิด)
 };
 
@@ -197,8 +217,6 @@ const derivedRoadsCalculator = new DerivedRoadsCalculator();
 
 
 // ========== 2. GENESIS BLOCK (แก้แผล "AI โง่วันแรกเกิด") ==========
-// (ฝังข้อมูล 100 ตา ที่ได้จาก 1000 ตา ของคุณ)
-// (นี่คือ `P_UNKNOWN`, `B_UNKNOWN`, `T`)
 const GENESIS_BLOCK_DATA = [
     'P','B','B','P','P','P','B','B','T','B','P','B','P','B','P','P',
     'B','B','B','B','P','P','P','P','B','P','B','P','P','B','B','B',
@@ -1185,4 +1203,4 @@ self.onmessage = async (e) => {
     }
 };
 
-console.log("WORKER: 'สมอง AI' (worker.js v14.1 - The Eye) โหลดแล้ว พร้อมรับคำสั่ง...");
+console.log("WORKER: 'สมอง AI' (worker.js v15.0 - The Small Road) โหลดแล้ว พร้อมรับคำสั่ง...");
