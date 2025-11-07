@@ -340,7 +340,8 @@ button,input,select,textarea{font-family:inherit}
 /* ========== (‼️‼️ เพิ่ม v14.0: DERIVED ROADS ‼️‼️) ========== */
 .derived-roads-panel {
     display: grid;
-    grid-template-columns: 1fr; /* (เริ่มต้นสำหรับมือถือ) */
+    /* (‼️‼️ อัปเกรด v15.0: แบ่ง 2 คอลัมน์สำหรับมือถือ ‼️‼️) */
+    grid-template-columns: 1fr 1fr;
     gap: 12px;
 }
 
@@ -387,10 +388,29 @@ button,input,select,textarea{font-family:inherit}
 }
 
 /* (Big Eye Road: Hollow Circles) */
-.dr-cell.R {
+.dr-cell.ber-R { /* (‼️‼️ v15.0: เปลี่ยนชื่อเป็น ber-R ‼️‼️) */
     border: 3px solid var(--red);
 }
-.dr-cell.B {
+.dr-cell.ber-B { /* (‼️‼️ v15.0: เปลี่ยนชื่อเป็น ber-B ‼️‼️) */
     border: 3px solid var(--blue);
 }
 /* ========== (จบส่วน v14.0) ========== */
+
+
+/* ========== (‼️‼️ เพิ่ม v15.0: SMALL ROAD ‼️‼️) ========== */
+/* (Small Road: Solid Circles) */
+.dr-cell.sr-R {
+    width: 14px; /* (เล็กกว่า Big Eye) */
+    height: 14px;
+    background: var(--red);
+    align-self: center; /* (จัดกลาง) */
+    justify-self: center; /* (จัดกลาง) */
+}
+.dr-cell.sr-B {
+    width: 14px;
+    height: 14px;
+    background: var(--blue);
+    align-self: center;
+    justify-self: center;
+}
+/* ========== (จบส่วน v15.0) ========== */
