@@ -1,14 +1,178 @@
 /* ========== PART 3: AI BRAIN (WEB WORKER) ========== */
 /*
  * นี่คือ "สมอง AI" (God-Tier) ฉบับสมบูรณ์
- * (ฉบับแก้ไข: v14.0 - The Eye)
- * เพิ่ม: ตรรกะการคำนวณ Big Eye Road
+ * (ฉบับแก้ไข: v14.1 - The Eye (Bugfix))
+ * แก้ไข: ReferenceError โดยย้าย Class ไปไว้บนสุด
  *
  * ทำหน้าที่: คำนวณตรรกะ AI ทั้งหมด, จัดการฐานข้อมูล (IndexedDB)
  * มันทำงานแยกขาดจาก "หน้าจอ" (UI) โดยสิ้นเชิง
  */
 
 "use strict";
+
+// (‼️‼️ ย้าย v14.0: DERIVED ROADS CALCULATOR มาไว้บนสุด ‼️‼️)
+/*
+ * นี่คือ "สมองส่วนตรรกะ" ที่ซับซ้อนที่สุด
+ * ใช้สำหรับคำนวณตารางย่อยทั้ง 3 (Big Eye, Small, Cockroach)
+ */
+class DerivedRoadsCalculator {
+    constructor() {
+        this.bigRoadCols = []; // (ข้อมูล Big Road ที่แปลงแล้ว)
+    }
+
+    // (ขั้นตอนที่ 1: แปลง History เป็น Big Road Columns)
+    _buildBigRoadCols(shoeHistory) {
+        const cols = [];
+        if (!shoeHistory || shoeHistory.length === 0) return cols;
+
+        let currentCol = [];
+        let lastResult = null;
+
+        shoeHistory.forEach(hand => {
+            const mainResult = hand.result[0]; // (P, B, T)
+
+            if (mainResult === 'T') {
+                if (currentCol.length > 0) {
+                    // (เพิ่ม TIE เข้าไปในเซลล์ล่าสุด)
+                    currentCol[currentCol.length - 1].ties = (currentCol[currentCol.length - 1].ties || 0) + 1;
+                }
+                return;
+            }
+
+            const handData = { result: mainResult, ties: 0 };
+
+            if (currentCol.length === 0 || mainResult === lastResult) {
+                currentCol.push(handData);
+            } else {
+                cols.push(currentCol); // (บันทึกคอลัมน์เก่า)
+                currentCol = [handData]; // (เริ่มคอลัมน์ใหม่)
+            }
+            lastResult = mainResult;
+        });
+
+        if (currentCol.length > 0) {
+            cols.push(currentCol); // (บันทึกคอลัมน์สุดท้าย)
+        }
+        
+        return cols;
+    }
+    
+    // (ฟังก์ชัน "ค้นหา" เซลล์ใน Big Road)
+    _getCell(col, row) {
+        if (col < 0 || row < 0) return null;
+        if (this.bigRoadCols[col] && this.bigRoadCols[col][row]) {
+            return this.bigRoadCols[col][row];
+        }
+        return null;
+    }
+    
+    // (ฟังก์ชัน "เปรียบเทียบ" ตารางย่อย)
+    _compare(colA, rowA, colB, rowB) {
+        const cellA = this._getCell(colA, rowA);
+        const cellB = this._getCell(colB, rowB);
+
+        // (ถ้า "ไม่มี" เซลล์ = เสมอ (สีน้ำเงิน))
+        if (cellA === null && cellB === null) return 'B'; // (Blue = Even)
+        // (ถ้ามีแค่ 1 เซลล์ = ไม่เสมอ (สีแดง))
+        if (cellA === null || cellB === null) return 'R'; // (Red = Chaos)
+        // (ถ้า "มี" ทั้งคู่ = เสมอ (สีน้ำเงิน))
+        return 'B'; // (Blue = Even)
+    }
+
+    // (ขั้นตอนที่ 2: คำนวณ Big Eye Road - ตารางไข่ปลา)
+    _calculateBigEyeRoad() {
+        const results = []; // (เช่น [ { col: 1, row: 1, result: "R" }, ... ])
+        
+        // (Big Eye Road เริ่มที่ "คอลัมน์ 1, แถว 1") (index 0)
+        // (มันจะเริ่มเช็คเมื่อมีข้อมูล "คอลัมน์ 1, แถว 1" (index [1][1]))
+        
+        const startCol = 1;
+        const startRow = 1;
+        
+        for (let c = startCol; c < this.bigRoadCols.length; c++) {
+            for (let r = 0; r < this.bigRoadCols[c].length; r++) {
+                
+                // (ข้ามเซลล์ [1][0] เพราะมันคือจุดอ้างอิงแรก)
+                if (r === 0 && c === startCol) continue; 
+
+                let result;
+                if (r === 0) {
+                    // (ถ้าอยู่แถวบนสุด: เทียบคอลัมน์ก่อนหน้า)
+                    // (เทียบ [c][0] กับ [c-1][0])
+                    result = this._compare(c, 0, c - 1, 0);
+                } else {
+                    // (ถ้าอยู่แถวอื่น: เทียบเซลล์ข้างบน กับ เซลล์ซ้าย)
+                    
+                    // (ตรรกะ "มังกร" (Dragon tail) ของตารางย่อย)
+                    // (ถ้า [c][r-1] (ข้างบน) "มี" -> ให้ใช้ผลลัพธ์แนวตั้ง)
+                    if (this._getCell(c, r - 1) !== null) {
+                        // (เทียบ [c][r] กับ [c][r-1])
+                        result = this._compare(c, r, c, r - 1);
+                    } else {
+                    // (ถ้า [c][r-1] (ข้างบน) "ไม่มี" -> ให้ใช้ผลลัพธ์แนวนอน)
+                        // (เทียบ [c][r] กับ [c-1][r])
+                        result = this._compare(c, r, c - 1, r);
+                    }
+                }
+                
+                // (บันทึกผลลัพธ์)
+                results.push({ col: c, row: r, result: result });
+            }
+        }
+        return this._formatToGrid(results);
+    }
+    
+    // (ขั้นตอนที่ 3: จัดรูปแบบผลลัพธ์ (R, B) ให้อยู่ในตาราง Grid)
+    _formatToGrid(results) {
+        const cols = [];
+        if (!results || results.length === 0) return { cols };
+
+        let currentCol = [];
+        let lastResult = null;
+        let lastBigRoadCol = -1;
+        let lastBigRoadRow = -1;
+
+        results.forEach(res => {
+            // (ตรวจสอบว่าเซลล์ใน Big Road "ติดกัน" หรือไม่)
+            // (ถ้า "คอลัมน์" ใน Big Road เปลี่ยน หรือ "แถว" ใน Big Road เปลี่ยน (ที่ไม่ใช่ 0))
+            const isNewLine = (res.col !== lastBigRoadCol && res.row > 0);
+            
+            if (currentCol.length === 0 || res.result === lastResult) {
+                currentCol.push(res.result); // (เพิ่ม R หรือ B)
+            } else {
+                cols.push(currentCol); // (บันทึกคอลัมน์เก่า)
+                currentCol = [res.result]; // (เริ่มคอลัมน์ใหม่)
+            }
+            
+            lastResult = res.result;
+            lastBigRoadCol = res.col;
+            lastBigRoadRow = res.row;
+        });
+
+        if (currentCol.length > 0) {
+            cols.push(currentCol); // (บันทึกคอลัมน์สุดท้าย)
+        }
+        
+        return { cols: cols }; // (เช่น { cols: [ ["R", "R"], ["B", "B", "B"] ] })
+    }
+
+    // (ฟังก์ชัน "หลัก" ที่จะถูกเรียกจากภายนอก)
+    calculate(shoeHistory) {
+        this.bigRoadCols = this._buildBigRoadCols(shoeHistory);
+        
+        const bigEye = this._calculateBigEyeRoad();
+        const small = {}; // (ยังไม่ทำ v15.0)
+        const cockroach = {}; // (ยังไม่ทำ v16.0)
+        
+        return {
+            bigEye: bigEye,
+            small: small,
+            cockroach: cockroach
+        };
+    }
+}
+// (‼️‼️ จบ v14.0 Class ‼️‼️)
+
 
 // ========== 1. AI CONFIGURATION (แก้แผล "บำรุงรักษา") ==========
 const AI_CONFIG = {
@@ -28,7 +192,7 @@ const AI_CONFIG = {
 let CONFIG = {}; // (ประกาศตัวแปร CONFIG)
 let EXPERT_WEIGHTS = {}; // (ที่เก็บ "สัญชาตญาณ")
 
-// (‼️‼️ เพิ่ม v14.0: สร้างเครื่องคำนวณตารางย่อย ‼️‼️)
+// (‼️‼️ แก้ไข v14.1: สร้าง instance "หลัง" class ‼️‼️)
 const derivedRoadsCalculator = new DerivedRoadsCalculator();
 
 
@@ -456,6 +620,7 @@ function getFinalSignal(votes, performance, riskThreshold) {
          condition = `รอคะแนน ${normalizedThreshold.toFixed(2)}`;
     }
     
+    const totalExperts = 9; // (ค่าคงที่)
     return {
         finalPrediction: finalPrediction,
         confidence: Math.round((maxScore / totalExperts) * 100), // (totalExperts = 9)
@@ -1020,166 +1185,4 @@ self.onmessage = async (e) => {
     }
 };
 
-
-// (‼️‼️ เพิ่ม v14.0: DERIVED ROADS CALCULATOR ‼️‼️)
-/*
- * นี่คือ "สมองส่วนตรรกะ" ที่ซับซ้อนที่สุด
- * ใช้สำหรับคำนวณตารางย่อยทั้ง 3 (Big Eye, Small, Cockroach)
- */
-class DerivedRoadsCalculator {
-    constructor() {
-        this.bigRoadCols = []; // (ข้อมูล Big Road ที่แปลงแล้ว)
-    }
-
-    // (ขั้นตอนที่ 1: แปลง History เป็น Big Road Columns)
-    _buildBigRoadCols(shoeHistory) {
-        const cols = [];
-        if (!shoeHistory || shoeHistory.length === 0) return cols;
-
-        let currentCol = [];
-        let lastResult = null;
-
-        shoeHistory.forEach(hand => {
-            const mainResult = hand.result[0]; // (P, B, T)
-
-            if (mainResult === 'T') {
-                if (currentCol.length > 0) {
-                    // (เพิ่ม TIE เข้าไปในเซลล์ล่าสุด)
-                    currentCol[currentCol.length - 1].ties = (currentCol[currentCol.length - 1].ties || 0) + 1;
-                }
-                return;
-            }
-
-            const handData = { result: mainResult, ties: 0 };
-
-            if (currentCol.length === 0 || mainResult === lastResult) {
-                currentCol.push(handData);
-            } else {
-                cols.push(currentCol); // (บันทึกคอลัมน์เก่า)
-                currentCol = [handData]; // (เริ่มคอลัมน์ใหม่)
-            }
-            lastResult = mainResult;
-        });
-
-        if (currentCol.length > 0) {
-            cols.push(currentCol); // (บันทึกคอลัมน์สุดท้าย)
-        }
-        
-        return cols;
-    }
-    
-    // (ฟังก์ชัน "ค้นหา" เซลล์ใน Big Road)
-    _getCell(col, row) {
-        if (col < 0 || row < 0) return null;
-        if (this.bigRoadCols[col] && this.bigRoadCols[col][row]) {
-            return this.bigRoadCols[col][row];
-        }
-        return null;
-    }
-    
-    // (ฟังก์ชัน "เปรียบเทียบ" ตารางย่อย)
-    _compare(colA, rowA, colB, rowB) {
-        const cellA = this._getCell(colA, rowA);
-        const cellB = this._getCell(colB, rowB);
-
-        // (ถ้า "ไม่มี" เซลล์ = เสมอ (สีน้ำเงิน))
-        if (cellA === null && cellB === null) return 'B'; // (Blue = Even)
-        // (ถ้ามีแค่ 1 เซลล์ = ไม่เสมอ (สีแดง))
-        if (cellA === null || cellB === null) return 'R'; // (Red = Chaos)
-        // (ถ้า "มี" ทั้งคู่ = เสมอ (สีน้ำเงิน))
-        return 'B'; // (Blue = Even)
-    }
-
-    // (ขั้นตอนที่ 2: คำนวณ Big Eye Road - ตารางไข่ปลา)
-    _calculateBigEyeRoad() {
-        const results = []; // (เช่น [ { col: 1, row: 1, result: "R" }, ... ])
-        
-        // (Big Eye Road เริ่มที่ "คอลัมน์ 1, แถว 1") (index 0)
-        // (มันจะเริ่มเช็คเมื่อมีข้อมูล "คอลัมน์ 1, แถว 1" (index [1][1]))
-        
-        const startCol = 1;
-        const startRow = 1;
-        
-        for (let c = startCol; c < this.bigRoadCols.length; c++) {
-            for (let r = 0; r < this.bigRoadCols[c].length; r++) {
-                
-                // (ข้ามเซลล์ [1][0] เพราะมันคือจุดอ้างอิงแรก)
-                if (r === 0 && c === startCol) continue; 
-
-                let result;
-                if (r === 0) {
-                    // (ถ้าอยู่แถวบนสุด: เทียบคอลัมน์ก่อนหน้า)
-                    // (เทียบ [c][0] กับ [c-1][0])
-                    result = this._compare(c, 0, c - 1, 0);
-                } else {
-                    // (ถ้าอยู่แถวอื่น: เทียบเซลล์ข้างบน กับ เซลล์ซ้าย)
-                    
-                    // (ตรรกะ "มังกร" (Dragon tail) ของตารางย่อย)
-                    // (ถ้า [c][r-1] (ข้างบน) "มี" -> ให้ใช้ผลลัพธ์แนวตั้ง)
-                    if (this._getCell(c, r - 1) !== null) {
-                        // (เทียบ [c][r] กับ [c][r-1])
-                        result = this._compare(c, r, c, r - 1);
-                    } else {
-                    // (ถ้า [c][r-1] (ข้างบน) "ไม่มี" -> ให้ใช้ผลลัพธ์แนวนอน)
-                        // (เทียบ [c][r] กับ [c-1][r])
-                        result = this._compare(c, r, c - 1, r);
-                    }
-                }
-                
-                // (บันทึกผลลัพธ์)
-                results.push({ col: c, row: r, result: result });
-            }
-        }
-        return this._formatToGrid(results);
-    }
-    
-    // (ขั้นตอนที่ 3: จัดรูปแบบผลลัพธ์ (R, B) ให้อยู่ในตาราง Grid)
-    _formatToGrid(results) {
-        const cols = [];
-        if (!results || results.length === 0) return { cols };
-
-        let currentCol = [];
-        let lastResult = null;
-        let lastBigRoadCol = -1;
-        let lastBigRoadRow = -1;
-
-        results.forEach(res => {
-            // (ตรวจสอบว่าเซลล์ใน Big Road "ติดกัน" หรือไม่)
-            // (ถ้า "คอลัมน์" ใน Big Road เปลี่ยน หรือ "แถว" ใน Big Road เปลี่ยน (ที่ไม่ใช่ 0))
-            const isNewLine = (res.col !== lastBigRoadCol && res.row > 0);
-            
-            if (currentCol.length === 0 || res.result === lastResult) {
-                currentCol.push(res.result); // (เพิ่ม R หรือ B)
-            } else {
-                cols.push(currentCol); // (บันทึกคอลัมน์เก่า)
-                currentCol = [res.result]; // (เริ่มคอลัมน์ใหม่)
-            }
-            
-            lastResult = res.result;
-            lastBigRoadCol = res.col;
-            lastBigRoadRow = res.row;
-        });
-
-        if (currentCol.length > 0) {
-            cols.push(currentCol); // (บันทึกคอลัมน์สุดท้าย)
-        }
-        
-        return { cols: cols }; // (เช่น { cols: [ ["R", "R"], ["B", "B", "B"] ] })
-    }
-
-    // (ฟังก์ชัน "หลัก" ที่จะถูกเรียกจากภายนอก)
-    calculate(shoeHistory) {
-        this.bigRoadCols = this._buildBigRoadCols(shoeHistory);
-        
-        const bigEye = this._calculateBigEyeRoad();
-        const small = {}; // (ยังไม่ทำ v15.0)
-        const cockroach = {}; // (ยังไม่ทำ v16.0)
-        
-        return {
-            bigEye: bigEye,
-            small: small,
-            cockroach: cockroach
-        };
-    }
-}
-// (‼️‼️ จบ v14.0 ‼️‼️)
+console.log("WORKER: 'สมอง AI' (worker.js v14.1 - The Eye) โหลดแล้ว พร้อมรับคำสั่ง...");
