@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-<title>OC Baccarat AI [God-Tier]</title>
+<title>OC Baccarat AI [God-Tier v13.0]</title>
 <link rel="manifest" href="manifest.json">
 <style>
 /* ========== 1. ROOT VARIABLES & GLOBAL RESET ========== */
@@ -562,6 +562,7 @@ button,input,select,textarea{font-family:inherit}
     <h3 style="margin-top:20px">โซนอันตราย (บำรุงรักษา)</h3>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:16px">
         <button class="btn-small" onclick="onRunBIST()" style="background:var(--warn);color:#000">🩺 ตรวจสุขภาพสมอง (BIST)</button>
+        <button class="btn-small" onclick="onResyncBrain()" style="background:var(--warn);color:#000">🩺 ซิงค์สถิติสมองใหม่</button>
         <button class="btn-small" onclick="onClearMemory()" style="background:var(--red);color:var(--text)">🔥 ล้าง "สมอง" (IndexedDB)</button>
     </div>
   </div>
@@ -584,13 +585,13 @@ button,input,select,textarea{font-family:inherit}
          - <strong>โหมดปิด (Default):</strong> AI นับ 1 สิทธิ์ 1 เสียง (เช่น 5/9 เสียง)<br>
          - <strong>โหมดเปิด (God-Tier):</strong> AI จะ "ถ่วงน้ำหนัก" โหวตตาม "Winrate" จริงของผู้เชี่ยวชาญแต่ละตัว
       </p>
+      <p><strong>🩺 ซิงค์สถิติสมองใหม่</strong><br>
+         หาก "ตรวจสุขภาพสมอง (BIST)" แล้วพบว่าข้อมูลไม่ตรงกัน ให้ใช้ปุ่มนี้เพื่อ "บังคับ" ให้ AI คำนวณสถิติและ Winrate ทั้งหมดใหม่จากประวัติจริง
+      </p>
       <p><strong>Big Road (ทึบ vs โปร่ง)</strong><br>
          - <strong>วงกลมทึบ (P/B):</strong> ชนะด้วยไพ่ 2 ใบ (P2 / B2)<br>
          - <strong>วงกลมโปร่ง (P/B):</strong> ชนะด้วยไพ่ 3 ใบ (P3 / B3)<br>
          - <strong>วงกลมครึ่งๆ (จาง):</strong> ผลลัพธ์ที่ "ไม่ระบุ" (`_UNKNOWN`)
-      </p>
-      <p><strong>TIE (เส้นเฉียง)</strong><br>
-         ผลเสมอ `T` จะถูกแสดงเป็น "เส้นสีเขียวเฉียง" ทับผลลัพธ์ P/B ก่อนหน้า (เหมือนในคาสิโนจริง)
       </p>
     </div>
   </div>
@@ -674,12 +675,10 @@ const ui = {
     controlsGrid: document.getElementById('controlsGrid'),
     quickControls: document.getElementById('quickControls'),
     
-    // (‼️‼️ เพิ่ม: BETTING STRATEGY ‼️‼️)
     bettingPanel: document.getElementById('bettingPanel'),
     betSuggestion: document.getElementById('betSuggestion'),
     betReason: document.getElementById('betReason'),
     
-    // (Smart Interface 3 ปุ่ม)
     btnPlayer: document.getElementById('btnPlayer'),
     btnBanker: document.getElementById('btnBanker'),
     btnTie: document.getElementById('btnTie'),
@@ -696,7 +695,6 @@ const ui = {
     bigroad: document.getElementById('bigroad'),
     
     aiDashboard: document.getElementById('aiDashboard'),
-    // (9 Experts)
     expMain: document.getElementById('expMain'),
     expDerived: document.getElementById('expDerived'),
     expRules: document.getElementById('expRules'),
@@ -773,20 +771,19 @@ function initializeWorker() {
     if (window.Worker) {
         document.getElementById('loaderStatus').textContent = "สถานะ: กำลังสตาร์ท 'สมอง AI'...";
         try {
-            // (‼️‼️ แก้ไข: Cache Busting ‼️‼️)
-            // (เปลี่ยน v=1.0.1 เป็น v=1.0.2 เพื่อบังคับโหลดใหม่)
-            aiWorker = new Worker('worker.js?v=1.0.2'); 
+            // (‼️‼️ อัปเดต: Cache Busting ‼️‼️)
+            // (v13.0 - The Repair)
+            aiWorker = new Worker('worker.js?v=1.0.3'); 
             
             aiWorker.onmessage = handleWorkerMessage;
             aiWorker.onerror = handleWorkerError;
             
-            // (อ่านค่า Setting ที่บันทึกไว้)
             loadSettings(); 
             
             const config = {
                 riskThreshold: currentTriggerValue,
                 powerMode: appSettings.powerMode,
-                useMetaMind: appSettings.useMetaMind // (‼️‼️ เพิ่ม ‼️‼️)
+                useMetaMind: appSettings.useMetaMind 
             };
             aiWorker.postMessage({ command: 'INIT', config: config });
             
@@ -817,7 +814,6 @@ function handleWorkerMessage(e) {
             ui.statusHeartbeat.className = "val ok";
             aiWorker.postMessage({ command: 'LOAD_LAST_STATE' });
             
-            // (‼️‼️ เพิ่ม: อัปเดต UI ของ Slider ‼️‼️)
             updateRiskSliderUI();
             
             break;
@@ -864,6 +860,13 @@ function handleWorkerMessage(e) {
         case 'RETRAIN_COMPLETE':
             ui.retrainOverlay.style.display = 'none';
             alert('การฝึกสมองใหม่เสร็จสิ้น! ระบบพร้อมใช้งาน');
+            aiWorker.postMessage({ command: 'LOAD_LAST_STATE' });
+            break;
+            
+        // (‼️‼️ เพิ่ม: REPAIR_COMPLETE ‼️‼️)
+        case 'REPAIR_COMPLETE':
+            ui.retrainOverlay.style.display = 'none';
+            alert('ซิงค์สถิติสมองใหม่สำเร็จ! ข้อมูลถูกต้อง 100%');
             aiWorker.postMessage({ command: 'LOAD_LAST_STATE' });
             break;
 
@@ -1033,7 +1036,7 @@ function updateExpertDashboard(votes, performance) {
     setVote(ui.expMain, votes.main); setPerf('main');
     setVote(ui.expDerived, votes.derived); setPerf('derived');
     setVote(ui.expRules, votes.rules); setPerf('rules');
-    setVote(ui.expStats, votes.stats); setPerf('stats'); // (ชื่อ Stats ยังเหมือนเดิม)
+    setVote(ui.expStats, votes.stats); // (ชื่อ Stats ยังเหมือนเดิม)
     setVote(ui.expSpecial, votes.special); setPerf('special');
     setVote(ui.expSimA, votes.simA); setPerf('simA');
     setVote(ui.expSimB, votes.simB); setPerf('simB');
@@ -1541,6 +1544,22 @@ window.onRunBIST = function() {
         aiWorker.postMessage({ command: 'RUN_BIST' });
     });
 }
+// (‼️‼️ เพิ่ม: AUTO-REPAIR ‼️‼️)
+window.onResyncBrain = function() {
+    if (!aiWorker) return;
+    showConfirm(
+        'ยืนยันการซิงค์สถิติสมองใหม่',
+        'การกระทำนี้จะ "คำนวณสถิติและ Winrate AI ทั้งหมดใหม่" จากประวัติจริง (อาจใช้เวลาสักครู่หากข้อมูลเยอะ)\n\nใช้ปุ่มนี้เมื่อ BIST ตรวจพบว่าข้อมูลไม่ตรงกัน',
+        () => {
+            ui.retrainOverlay.style.display = 'flex';
+            ui.retrainProgressBar.style.width = '0%';
+            ui.retrainStatus.textContent = "สถานะ: เริ่มต้นการซ่อมแซม...";
+            aiWorker.postMessage({ command: 'REPAIR_BRAIN' });
+            closeModal('settingsModal');
+        }
+    );
+}
+
 
 // H. (‼️‼️ อัปเกรด: SETTINGS ‼️‼️)
 function saveSettings() {
