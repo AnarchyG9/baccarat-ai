@@ -1,7 +1,9 @@
 /* ========== PART 3: AI BRAIN (WEB WORKER) ========== */
 /*
  * นี่คือ "สมอง AI" (God-Tier) ฉบับสมบูรณ์
- * (ฉบับแก้ไข: v12 - META-MIND (Weighted Voting))
+ * (ฉบับแก้ไข: v13.0 - The Repair)
+ * เพิ่ม: ระบบซ่อมแซมสถิติสมอง (REPAIR_BRAIN)
+ *
  * ทำหน้าที่: คำนวณตรรกะ AI ทั้งหมด, จัดการฐานข้อมูล (IndexedDB)
  * มันทำงานแยกขาดจาก "หน้าจอ" (UI) โดยสิ้นเชิง
  */
@@ -169,24 +171,20 @@ async function addHand(result, lastSignal) {
         result: result,
         shoe: currentShoeId,
         timestamp: Date.now(),
-        lastSignal: lastSignal, // (บันทึก "โหวต" ทั้งหมด)
+        lastSignal: lastSignal, 
         signalWin: signalWin    
     };
     
     const newHandId = await safeAdd('game_history', handData);
     
-    // (‼️‼️ อัปเกรด: "เรียนรู้" หลังเพิ่มข้อมูล ‼️‼️)
-    // (เรา "ไม่" (do not) await ที่นี่ เพื่อให้ UI ตอบสนองเร็ว)
-    // (มันจะอัปเดตสถิติในพื้นหลัง)
+    // (รันแบบ Asynchronous เพื่อ UI ที่เร็ว)
     Promise.all([
         updateGlobalStats(handData),
         updateExpertPerformance(handData)
     ]).then(() => {
-        // (เมื่อเรียนรู้เสร็จ ให้ "คำนวณ" น้ำหนักใหม่)
         calculateExpertWeights();
     });
     
-    // 5. วิเคราะห์ตาถัดไป
     return runAnalysis(newHandId);
 }
 
@@ -203,8 +201,6 @@ async function undoLastHand() {
             if (cursor) {
                 const handToRemove = cursor.value;
                 
-                // (‼️‼️ อัปเกรด: "ย้อนการเรียนรู้" ‼️‼️)
-                // (ต้อง await ที่นี่ เพราะมันสำคัญ)
                 await reverseGlobalStats(handToRemove);
                 await reverseExpertPerformance(handToRemove);
 
@@ -215,7 +211,6 @@ async function undoLastHand() {
         cursorReq.onerror = (e) => reject(e.target.error);
         
         tx.oncomplete = () => {
-             // (เมื่อย้อนเสร็จ ให้ "คำนวณ" น้ำหนักใหม่)
              calculateExpertWeights().then(() => {
                  runAnalysis(null).then(resolve).catch(reject);
              });
@@ -242,7 +237,6 @@ async function editHistory(handId, newResult) {
         
         await safeWrite('game_history', newData);
         
-        // (เมื่อแก้ไขเสร็จ ให้ "คำนวณ" น้ำหนักใหม่)
         await calculateExpertWeights();
         return runAnalysis(handId);
     } else {
@@ -259,7 +253,6 @@ async function loadLastState() {
         postMessage({ command: 'RETRAIN_COMPLETE' });
     }
     
-    // (‼️‼️ เพิ่ม: "คำนวณสัญชาตญาณ" ตอนเปิดแอป ‼️‼️)
     await calculateExpertWeights();
     
     return runAnalysis(null);
@@ -275,18 +268,23 @@ async function deleteCurrentShoe() {
     const tx = DB.transaction(['game_history', 'global_stats', 'expert_performance', 'shoe_meta'], 'readwrite');
     const store_game = tx.objectStore('game_history');
     
+    // (สร้าง Promise array สำหรับการย้อนสถิติ)
+    const reversePromises = [];
+    
     for (const hand of shoeHistory) {
-        await reverseGlobalStats(hand);
-        await reverseExpertPerformance(hand);
+        reversePromises.push(reverseGlobalStats(hand));
+        reversePromises.push(reverseExpertPerformance(hand));
         store_game.delete(hand.id);
     }
     
     tx.objectStore('shoe_meta').delete(currentShoeId);
     
+    // (รอให้การย้อนสถิติทั้งหมดเสร็จสิ้น)
+    await Promise.all(reversePromises);
+    
     return new Promise((resolve, reject) => {
         tx.oncomplete = () => {
             console.log(`WORKER: ลบขอนไพ่ #${currentShoeId} ( ${shoeHistory.length} ตา) สำเร็จ`);
-            // (เมื่อลบเสร็จ ให้ "คำนวณ" น้ำหนักใหม่)
             calculateExpertWeights().then(resolve);
         };
         tx.onerror = (e) => {
@@ -307,7 +305,7 @@ async function runAnalysis(lastHandId) {
     const [globalStats, shoeHistory, expertPerformance] = await Promise.all([
         getGlobalStats(),
         getShoeHistory(currentShoeId),
-        getExpertPerformance() // (ดึง "Winrate" ที่คำนวณไว้แล้ว)
+        getExpertPerformance() 
     ]);
     
     const shoeStats = calculateShoeStats(shoeHistory);
@@ -316,19 +314,16 @@ async function runAnalysis(lastHandId) {
     votes.main = expertMainPatterns(shoeHistory);
     votes.derived = expertDerivedRoads(shoeHistory);
     votes.rules = expertCardRules(shoeHistory);
-    votes.stats = expertStats(shoeHistory); // (‼️‼️ อัปเกรด: ส่ง "ประวัติ" (h) ไม่ใช่ "สถิติ" (s) ‼️‼️)
-    votes.special = expertSpecial(shoeHistory); // (‼️‼️ อัปเกรด: ฉลาดขึ้น ‼️‼️)
+    votes.stats = expertStats(shoeHistory); 
+    votes.special = expertSpecial(shoeHistory); 
     votes.simA = expertSimulator(shoeStats, globalStats, 'stats');
     votes.simB = expertSimulator(shoeStats, globalStats, 'pattern');
     votes.simC = expertSimulator(shoeStats, globalStats, 'chaos');
     votes.miner = expertMiner(shoeHistory, globalStats);
-
-    // (เรา "ไม่" (do not) ใช้ exploration หรือ weighting อีกต่อไป)
-    // (เพราะ Meta-mind จะทำหน้าที่นี้ใน getFinalSignal)
     
     const signal = getFinalSignal(votes, expertPerformance, CONFIG.riskThreshold);
     
-    lastExpertVotes = votes; // (บันทึกโหวต "ดิบ" (Raw) เพื่อใช้เรียนรู้)
+    lastExpertVotes = votes; 
 
     return {
         history: { shoe: shoeHistory },
@@ -338,7 +333,7 @@ async function runAnalysis(lastHandId) {
             storageSizeMB: globalStats.storageSizeMB || 0.1
         },
         signal: signal,
-        expertPerformance: expertPerformance // (ส่ง Winrate ไปให้ UI แสดง)
+        expertPerformance: expertPerformance 
     };
 }
 
@@ -400,9 +395,7 @@ function expertMiner(h, g) { return 'WAIT'; }
 // (‼️‼️ อัปเกรด: "META-MIND" ‼️‼️)
 function getFinalSignal(votes, performance, riskThreshold) {
     
-    // ---------------------------------------------
     // (โหมด 1: ปิด Meta-mind (ระบบนับคะแนน 1-9))
-    // ---------------------------------------------
     if (!CONFIG.USE_META_MIND) {
         const voteCounts = { P: 0, B: 0, T: 0, WAIT: 0 };
         const voteKeys = Object.keys(votes);
@@ -415,7 +408,6 @@ function getFinalSignal(votes, performance, riskThreshold) {
         
         if (voteCounts.P > maxVotes) { maxVotes = voteCounts.P; finalPrediction = 'P'; }
         if (voteCounts.B > maxVotes) { maxVotes = voteCounts.B; finalPrediction = 'B'; }
-        // (เราไม่สน TIE)
         
         if (maxVotes < riskThreshold || (voteCounts.P === voteCounts.B && maxVotes > 0)) {
             finalPrediction = 'WAIT';
@@ -434,9 +426,7 @@ function getFinalSignal(votes, performance, riskThreshold) {
         };
     }
 
-    // ---------------------------------------------
     // (โหมด 2: เปิด Meta-mind (ระบบถ่วงน้ำหนัก))
-    // ---------------------------------------------
     const scores = { P: 0, B: 0, T: 0, WAIT: 0 };
     const voteKeys = Object.keys(votes);
     
@@ -452,11 +442,9 @@ function getFinalSignal(votes, performance, riskThreshold) {
     if (scores.P > maxScore) { maxScore = scores.P; finalPrediction = 'P'; }
     if (scores.B > maxScore) { maxScore = scores.B; finalPrediction = 'B'; }
     
-    // (คำนวณ "คะแนนขั้นต่ำ" (Threshold) จาก Slider (1-9))
-    // (นี่คือ "สัญชาตญาณ" ที่แปลง Slider -> คะแนน)
     const normalizedThreshold = riskThreshold * CONFIG.META_MIND_NORMALIZATION_FACTOR; 
     
-    if (maxScore < normalizedThreshold || (scores.P === scores.B && maxScore > 0)) {
+    if (maxScore < normalizedThreshold || (Math.abs(scores.P - scores.B) < 0.01 && maxScore > 0)) { // (ป้องกัน float error)
         finalPrediction = 'WAIT';
     }
 
@@ -467,8 +455,7 @@ function getFinalSignal(votes, performance, riskThreshold) {
     
     return {
         finalPrediction: finalPrediction,
-        // (ความมั่นใจ = คะแนนที่ได้ / 9 (คะแนนเต็มที่เป็นไปได้สูงสุด))
-        confidence: Math.round((maxScore / 9) * 100), 
+        confidence: Math.round((maxScore / totalExperts) * 100), // (totalExperts = 9)
         condition: condition,
         expertVotes: votes
     };
@@ -526,7 +513,6 @@ async function updateGlobalStats(handData) {
         keys.push('HUNTER_LOSSES');
     }
     
-    // (ใช้ Transaction เดียวเพื่อความเร็ว)
     const tx = DB.transaction('global_stats', 'readwrite');
     const store = tx.objectStore('global_stats');
     
@@ -535,6 +521,7 @@ async function updateGlobalStats(handData) {
         data.value++;
         store.put(data);
     }
+    return tx.done; // (Return transaction promise)
 }
 async function reverseGlobalStats(handData) {
     const result = handData.result;
@@ -557,6 +544,7 @@ async function reverseGlobalStats(handData) {
             store.put(data);
         }
     }
+    return tx.done;
 }
 
 // (ฟังก์ชันอ่าน/เขียน Winrate)
@@ -589,6 +577,7 @@ async function updateExpertPerformance(handData) {
         
         store.put(data);
     }
+    return tx.done;
 }
 async function reverseExpertPerformance(handData) {
     const actualResult = handData.result[0];
@@ -616,6 +605,7 @@ async function reverseExpertPerformance(handData) {
             store.put(data);
         }
     }
+    return tx.done;
 }
 
 // (‼️‼️ เพิ่ม: "สมองส่วนสัญชาตญาณ" ‼️‼️)
@@ -628,17 +618,15 @@ async function calculateExpertWeights() {
     for (const key of expertKeys) {
         const perf = performance[key];
         
-        // (ถ้าไม่มีข้อมูล หรือ ข้อมูลน้อยเกินไป (น้อยกว่า 20))
         if (!perf || perf.total < CONFIG.META_MIND_MIN_VOTES) {
-            newWeights[key] = CONFIG.META_MIND_DEFAULT_WEIGHT; // (ให้ค่าน้ำหนัก "เริ่มต้น")
+            newWeights[key] = CONFIG.META_MIND_DEFAULT_WEIGHT; 
         } else {
-            // (คำนวณ Winrate)
             const winrate = perf.wins / perf.total;
-            newWeights[key] = winrate; // (เช่น 0.62)
+            newWeights[key] = winrate; 
         }
     }
     
-    EXPERT_WEIGHTS = newWeights; // (บันทึก "สัญชาตญาณ" ใหม่)
+    EXPERT_WEIGHTS = newWeights; 
     console.log("WORKER: 'Meta-mind' Weights Recalculated:", EXPERT_WEIGHTS);
 }
 
@@ -722,7 +710,7 @@ async function exportCSV() {
     return [header, ...rows].join('\n');
 }
 
-// (ฝึกสมองใหม่จาก CSV - แก้แผล "Re-train Crash")
+// (ฝึกสมองใหม่จาก CSV)
 async function retrainFromCSV(csvString) {
     await clearAllMemory(false); 
     
@@ -740,6 +728,14 @@ async function retrainFromCSV(csvString) {
     for (let i = 0; i < totalLines; i += chunkSize) {
         const chunk = lines.slice(i, i + chunkSize);
         
+        // (‼️‼️ อัปเกรด: ใช้ Transaction เดียวต่อ Chunk ‼️‼️)
+        const tx_game = DB.transaction('game_history', 'readwrite');
+        const tx_globals = DB.transaction('global_stats', 'readwrite');
+        const store_game = tx_game.objectStore('game_history');
+        const store_globals = tx_globals.objectStore('global_stats');
+
+        const globalStatsCache = {};
+
         for (const line of chunk) {
             const cols = line.split(',');
             const hand = {};
@@ -761,9 +757,25 @@ async function retrainFromCSV(csvString) {
             hand.signalWin = null;
             hand.lastSignal = {};
             
-            await safeAdd('game_history', hand);
-            await updateGlobalStats(hand);
+            store_game.add(hand); // (เพิ่มเข้า DB)
+
+            // (อัปเดตสถิติใน Cache)
+            const mainResult = hand.result[0];
+            const keys = ['TOTAL_HANDS', mainResult, hand.result];
+            keys.forEach(key => {
+                globalStatsCache[key] = (globalStatsCache[key] || 0) + 1;
+            });
         }
+        
+        // (บันทึก Global Stats จาก Cache ลง DB)
+        for (const key in globalStatsCache) {
+             const data = (await store_globals.get(key)) || { key: key, value: 0 };
+             data.value += globalStatsCache[key];
+             store_globals.put(data);
+        }
+        
+        // (รอ Transaction ทั้ง 2 จบ)
+        await Promise.all([tx_game.done, tx_globals.done]);
         
         const progress = Math.round(((i + chunk.length) / totalLines) * 100);
         postMessage({
@@ -796,12 +808,14 @@ async function clearAllMemory(sendPostMessage = true) {
 // (ตรวจสุขภาพ - BIST)
 async function runBIST() {
     const stats = await getGlobalStats();
+    // (ใช้ .count() เพื่อความเร็ว)
+    const historyCount = await DB.transaction('game_history').objectStore('game_history').count();
+    
     if (!stats.TOTAL_HANDS || stats.TOTAL_HANDS < 0) {
         return { passed: false, message: "ข้อมูล 'ตารางสรุป' (Global Stats) เสียหาย! (TOTAL_HANDS ผิดพลาด)" };
     }
-    const history = await getAllHistory();
-    if (stats.TOTAL_HANDS != history.length) {
-         return { passed: false, message: `ข้อมูล "ไม่ตรงกัน"! (ตารางสรุป: ${stats.TOTAL_HANDS} / ประวัติจริง: ${history.length})` };
+    if (stats.TOTAL_HANDS != historyCount) {
+         return { passed: false, message: `ข้อมูล "ไม่ตรงกัน"! (ตารางสรุป: ${stats.TOTAL_HANDS} / ประวัติจริง: ${historyCount})` };
     }
     return { passed: true, message: "ระบบสมบูรณ์ 100% (ข้อมูลตรงกัน)" };
 }
@@ -818,7 +832,7 @@ async function checkMemoryRestart() {
     }
 }
 
-// (‼️‼️ แก้ไข: "สรุปประวัติขอนไพ่" (ฉบับสมบูรณ์) ‼️‼️)
+// (‼️‼️ เพิ่ม: "สรุปประวัติขอนไพ่" (ฉบับสมบูรณ์) ‼️‼️)
 async function getShoeSummary() {
     const allShoesMeta = await safeGetAll('shoe_meta');
     
@@ -840,6 +854,91 @@ async function getShoeSummary() {
         });
     }
     return summary;
+}
+
+// (‼️‼️ เพิ่ม: "ซ่อมแซมสมองอัตโนมัติ" (ฉบับสมบูรณ์) ‼️‼️)
+async function repairBrain() {
+    postMessage({ command: 'RETRAIN_PROGRESS', progress: 0, message: "กำลังล้างสถิติเก่าที่ผิดพลาด..." });
+
+    // (ขั้นตอน A: ล้างตารางสรุป)
+    const tx_clear_globals = DB.transaction('global_stats', 'readwrite').objectStore('global_stats').clear();
+    const tx_clear_experts = DB.transaction('expert_performance', 'readwrite').objectStore('expert_performance').clear();
+    await Promise.all([tx_clear_globals, tx_clear_experts]);
+
+    postMessage({ command: 'RETRAIN_PROGRESS', progress: 10, message: "กำลังอ่านประวัติจริงทั้งหมด..." });
+
+    // (ขั้นตอน B: อ่านประวัติจริง)
+    const allHistory = await safeGetAll('game_history');
+    const totalHands = allHistory.length;
+    
+    // (ขั้นตอน C: คำนวณใหม่)
+    // (นี่คือตรรกะที่ "เร็วมาก" เพราะทำใน Memory ก่อน)
+    const newGlobals = {};
+    const newExperts = {};
+    let processedCount = 0;
+
+    for (const hand of allHistory) {
+        processedCount++;
+        
+        // 1. คำนวณ Global Stats
+        const result = hand.result;
+        const mainResult = result[0];
+        const keys = ['TOTAL_HANDS', mainResult, result];
+        if (hand.signalWin === true) keys.push('HUNTER_WINS');
+        if (hand.signalWin === false) keys.push('HUNTER_LOSSES');
+        
+        keys.forEach(key => {
+            newGlobals[key] = (newGlobals[key] || 0) + 1;
+        });
+
+        // 2. คำนวณ Expert Performance
+        const actualResult = hand.result[0];
+        if (actualResult !== 'T') {
+            const votes = hand.lastSignal;
+            if (votes && Object.keys(votes).length > 0) {
+                for (const expertKey in votes) {
+                    const prediction = votes[expertKey];
+                    if (prediction !== 'WAIT' && prediction !== 'T') {
+                        const stats = newExperts[expertKey] || { wins: 0, losses: 0, total: 0 };
+                        if (prediction === actualResult) stats.wins++;
+                        else stats.losses++;
+                        stats.total++;
+                        newExperts[expertKey] = stats;
+                    }
+                }
+            }
+        }
+        
+        // (อัปเดต Progress bar เป็นระยะ)
+        if (processedCount % 500 === 0) {
+             const progress = 10 + Math.round((processedCount / totalHands) * 70); // (10% -> 80%)
+             postMessage({ command: 'RETRAIN_PROGRESS', progress: progress, message: `กำลังคำนวณ... ${processedCount} / ${totalHands} ตา` });
+        }
+    }
+
+    postMessage({ command: 'RETRAIN_PROGRESS', progress: 80, message: "กำลังบันทึกสถิติใหม่..." });
+
+    // (ขั้นตอน D: บันทึกของใหม่ (Batch Write))
+    const tx_globals_write = DB.transaction('global_stats', 'readwrite');
+    const store_globals = tx_globals_write.objectStore('global_stats');
+    for (const key in newGlobals) {
+        store_globals.put({ key: key, value: newGlobals[key] });
+    }
+
+    const tx_experts_write = DB.transaction('expert_performance', 'readwrite');
+    const store_experts = tx_experts_write.objectStore('expert_performance');
+    for (const key in newExperts) {
+        store_experts.put({ expertName: key, stats: newExperts[key] });
+    }
+    
+    await Promise.all([tx_globals_write.done, tx_experts_write.done]);
+
+    // (ขั้นตอน E: ซิงค์ Meta-mind)
+    postMessage({ command: 'RETRAIN_PROGRESS', progress: 95, message: "กำลังซิงค์ Meta-mind..." });
+    await calculateExpertWeights();
+    
+    postMessage({ command: 'RETRAIN_PROGRESS', progress: 100, message: "ซ่อมแซมสำเร็จ!" });
+    return;
 }
 
 
@@ -879,9 +978,8 @@ self.onmessage = async (e) => {
                     
                 case 'UPDATE_CONFIG':
                     CONFIG = { ...AI_CONFIG, ...CONFIG, ...data.config };
-                    // (‼️‼️ เพิ่ม: "คำนวณ" น้ำหนักใหม่ เมื่อเปิด/ปิด ‼️‼️)
                     await calculateExpertWeights(); 
-                    return { command: 'CONFIG_UPDATED' }; // (ไม่จำเป็นต้องส่งอะไรกลับ)
+                    return null; // (ไม่จำเป็นต้องส่งอะไรกลับ)
                     
                 case 'EXPORT_CSV':
                     return { command: 'EXPORT_DATA', csvString: await exportCSV() };
@@ -889,6 +987,11 @@ self.onmessage = async (e) => {
                 case 'RETRAIN_FROM_CSV':
                     await retrainFromCSV(data.csvString);
                     return { command: 'RETRAIN_COMPLETE' };
+                
+                // (‼️‼️ เพิ่ม: AUTO-REPAIR ‼️‼️)
+                case 'REPAIR_BRAIN':
+                    await repairBrain();
+                    return { command: 'REPAIR_COMPLETE' };
                     
                 case 'CLEAR_ALL_MEMORY':
                     await clearAllMemory();
@@ -921,4 +1024,4 @@ self.onmessage = async (e) => {
     }
 };
 
-console.log("WORKER: 'สมอง AI' (worker.js v12 - Meta-mind) โหลดแล้ว พร้อมรับคำสั่ง...");
+console.log("WORKER: 'สมอง AI' (worker.js v13.0 - The Repair) โหลดแล้ว พร้อมรับคำสั่ง...");
