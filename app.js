@@ -1,5 +1,5 @@
 // ========== PART 2: MAIN THREAD JAVASCRIPT ==========
-// นี่คือ "หน้าจอ" (UI) หรือ "เธรดหลัก" (ไฟล์ app.js v17.1)
+// นี่คือ "หน้าจอ" (UI) หรือ "เธรดหลัก" (ไฟล์ app.js v16.0)
 // ทำหน้าที่: จัดการ UI, สื่อสารกับ "สมอง" (Web Worker)
 
 // 1. DOM Elements (การเชื่อมต่อหน้าปัด)
@@ -117,9 +117,9 @@ function initializeWorker() {
     if (window.Worker) {
         document.getElementById('loaderStatus').textContent = "สถานะ: กำลังสตาร์ท 'สมอง AI'...";
         try {
-            // (‼️‼️ อัปเกรด v17.1: Cache Busting ‼️‼️)
-            // (v17.1 - The Awakening Bugfix)
-            aiWorker = new Worker('worker.js?v=1.0.7'); 
+            // (‼️‼️ อัปเกรด: Cache Busting ‼️‼️)
+            // (v16.0 - The Cockroach)
+            aiWorker = new Worker('worker.js?v=1.0.6'); 
             
             aiWorker.onmessage = handleWorkerMessage;
             aiWorker.onerror = handleWorkerError;
