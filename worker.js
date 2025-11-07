@@ -1,8 +1,10 @@
 /* ========== PART 3: AI BRAIN (WEB WORKER) ========== */
 /*
  * นี่คือ "สมอง AI" (God-Tier) ฉบับสมบูรณ์
- * (ฉบับแก้ไข: v17.0 - The Awakening)
+ * (ฉบับแก้ไข: v17.1 - The Awakening (Bugfix))
+ * แก้ไข: ReferenceError โดยย้าย Class ไปไว้บนสุด
  * เพิ่ม: "ปลุก" expertDerivedRoads ให้อ่าน 3 ตารางย่อย
+ * เพิ่ม: โหลด Genesis Block 10,000 ตา
  *
  * ทำหน้าที่: คำนวณตรรกะ AI ทั้งหมด, จัดการฐานข้อมูล (IndexedDB)
  * มันทำงานแยกขาดจาก "หน้าจอ" (UI) โดยสิ้นเชิง
@@ -10,7 +12,7 @@
 
 "use strict";
 
-// (‼️‼️ v14.0: DERIVED ROADS CALCULATOR ‼️‼️)
+// (‼️‼️ ย้าย v17.1: DERIVED ROADS CALCULATOR มาไว้บนสุด ‼️‼️)
 /*
  * นี่คือ "สมองส่วนตรรกะ" ที่ซับซ้อนที่สุด
  * ใช้สำหรับคำนวณตารางย่อยทั้ง 3 (Big Eye, Small, Cockroach)
@@ -263,9 +265,6 @@ class DerivedRoadsCalculator {
             return { ber: null, sr: null, cr: null };
         }
         
-        // (จำลองว่าถ้า "ตาต่อไป" เป็น "ผลลัพธ์ตรงข้าม" (เริ่มแถวใหม่))
-        const nextColIndex = this.bigRoadCols.length;
-        
         // (ทำนาย Big Eye Road)
         const nextBER = this._predictNextDerivedEntry(1); // (เทียบ [c] กับ [c-1])
         
@@ -301,7 +300,7 @@ const AI_CONFIG = {
 let CONFIG = {}; // (ประกาศตัวแปร CONFIG)
 let EXPERT_WEIGHTS = {}; // (ที่เก็บ "สัญชาตญาณ")
 
-// (‼️‼️ แก้ไข v14.1: สร้าง instance "หลัง" class ‼️‼️)
+// (‼️‼️ แก้ไข v17.1: สร้าง instance "หลัง" class ‼️‼️)
 const derivedRoadsCalculator = new DerivedRoadsCalculator();
 
 
@@ -1375,4 +1374,4 @@ self.onmessage = async (e) => {
     }
 };
 
-console.log("WORKER: 'สมอง AI' (worker.js v17.0 - The Awakening) โหลดแล้ว พร้อมรับคำสั่ง...");
+console.log("WORKER: 'สมอง AI' (worker.js v17.1 - The Awakening Bugfix) โหลดแล้ว พร้อมรับคำสั่ง...");
