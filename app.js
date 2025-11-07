@@ -1,5 +1,5 @@
 // ========== PART 2: MAIN THREAD JAVASCRIPT ==========
-// นี่คือ "หน้าจอ" (UI) หรือ "เธรดหลัก" (ไฟล์ app.js v14.0)
+// นี่คือ "หน้าจอ" (UI) หรือ "เธรดหลัก" (ไฟล์ app.js v15.0)
 // ทำหน้าที่: จัดการ UI, สื่อสารกับ "สมอง" (Web Worker)
 
 // 1. DOM Elements (การเชื่อมต่อหน้าปัด)
@@ -35,9 +35,10 @@ const ui = {
     
     bigroad: document.getElementById('bigroad'),
     
-    // (‼️‼️ เพิ่ม v14.0: DERIVED ROADS ‼️‼️)
+    // (‼️‼️ อัปเกรด v15.0: DERIVED ROADS ‼️‼️)
     bigEyeRoadGrid: document.getElementById('bigEyeRoadGrid'),
-    // (‼️‼️ จบ v14.0 ‼️‼️)
+    smallRoadGrid: document.getElementById('smallRoadGrid'),
+    // (‼️‼️ จบ v15.0 ‼️‼️)
     
     aiDashboard: document.getElementById('aiDashboard'),
     expMain: document.getElementById('expMain'),
@@ -116,8 +117,8 @@ function initializeWorker() {
         document.getElementById('loaderStatus').textContent = "สถานะ: กำลังสตาร์ท 'สมอง AI'...";
         try {
             // (‼️‼️ อัปเดต: Cache Busting ‼️‼️)
-            // (v14.0 - The Eye)
-            aiWorker = new Worker('worker.js?v=1.0.4'); 
+            // (v15.0 - The Small Road)
+            aiWorker = new Worker('worker.js?v=1.0.5'); 
             
             aiWorker.onmessage = handleWorkerMessage;
             aiWorker.onerror = handleWorkerError;
@@ -459,7 +460,7 @@ function renderBigRoad(history) {
     ui.bigroad.scrollLeft = ui.bigroad.scrollWidth;
 }
 
-// (‼️‼️ เพิ่ม v14.0: DERIVED ROADS RENDERER ‼️‼️)
+// (‼️‼️ อัปเกรด v15.0: DERIVED ROADS RENDERER ‼️‼️)
 function renderDerivedRoads(derivedRoads) {
     if (!derivedRoads) return;
 
@@ -474,7 +475,7 @@ function renderDerivedRoads(derivedRoads) {
             col.forEach(cell => {
                 const divCell = document.createElement('div');
                 // (cell คือ "R" หรือ "B")
-                divCell.className = `dr-cell ${cell}`; 
+                divCell.className = `dr-cell ber-${cell}`; // (‼️‼️ v15.0: เปลี่ยนชื่อคลาส)
                 divCol.appendChild(divCell);
             });
             berGrid.appendChild(divCol);
@@ -483,9 +484,27 @@ function renderDerivedRoads(derivedRoads) {
         berGrid.scrollLeft = berGrid.scrollWidth;
     }
     
-    // (เราจะเพิ่ม Small Road และ Cockroach Road ที่นี่ในอนาคต)
+    // --- 2. Small Road (ตารางไม้ขีด) ---
+    const srGrid = ui.smallRoadGrid;
+    srGrid.innerHTML = ''; // (ล้างของเก่า)
+    
+    if (derivedRoads.small && derivedRoads.small.cols) {
+        derivedRoads.small.cols.forEach(col => {
+            const divCol = document.createElement('div');
+            divCol.className = 'dr-col'; 
+            col.forEach(cell => {
+                const divCell = document.createElement('div');
+                // (cell คือ "R" หรือ "B")
+                divCell.className = `dr-cell sr-${cell}`; // (‼️‼️ v15.0: ใช้คลาสใหม่)
+                divCol.appendChild(divCell);
+            });
+            srGrid.appendChild(divCol);
+        });
+        // (เลื่อนไปขวาสุด)
+        srGrid.scrollLeft = srGrid.scrollWidth;
+    }
 }
-// (‼️‼️ จบ v14.0 ‼️‼️)
+// (‼️‼️ จบ v15.0 ‼️‼️)
 
 
 // E. อัปเดตหน้าต่างแก้ไขประวัติ
